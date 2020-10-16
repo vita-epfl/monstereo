@@ -68,7 +68,7 @@ def factory_for_gt(im_size, name=None, path_gt=None, verbose=True):
             dic_names = json.load(f)
         if verbose:
             print('-' * 120 + "\nGround-truth file opened")
-    except (FileNotFoundError, TypeError):
+    except (FileNotFoundError, TypeError): 
         if verbose:
             print('-' * 120 + "\nGround-truth file not found")
         dic_names = {}
@@ -236,12 +236,12 @@ def extract_outputs(outputs, tasks=()):
          - if tasks are provided return ordered list of raw tensors
          - else return a dictionary with processed outputs
     """
-    dic_out = {'x': outputs[:, 0:1],
-               'y': outputs[:, 1:2],
+    dic_out = {'x': outputs[:, 0],
+               'y': outputs[:, 1],
                'd': outputs[:, 2:4],
-               'h': outputs[:, 4:5],
-               'w': outputs[:, 5:6],
-               'l': outputs[:, 6:7],
+               'h': outputs[:, 4],
+               'w': outputs[:, 5],
+               'l': outputs[:, 6],
                'ori': outputs[:, 7:9]}
 
     if outputs.shape[1] == 10:

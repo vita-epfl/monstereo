@@ -43,7 +43,7 @@ class ActivityDataset(Dataset):
 
 class KeypointsDataset(Dataset):
     """
-    Dataloader fro nuscenes or kitti datasets
+    Dataloader from nuscenes or kitti datasets
     """
 
     def __init__(self, joints, phase):

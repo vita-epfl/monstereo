@@ -74,7 +74,7 @@ def check_f_formations(idx, idx_t, centers, angles, radii, social_distance=False
     """
     Check F-formations for people close together:
     1) Empty space of 0.4 + meters (no other people or themselves inside)
-    2) People looking inward
+    2) People looking inward            --> orientation is now a thing!!!
     """
 
     # Extract centers and angles
@@ -210,9 +210,9 @@ def show_social(args, image_t, output_path, annotations, dic_out):
     assert 'front' in args.output_types or 'bird' in args.output_types, "outputs allowed: front and/or bird"
 
     angles = dic_out['angles']
-    dds = dic_out['dds_pred']
+    dds = dic_out['dds_pred']                                       # DDS stands for the distance to the end user ? 
     stds = dic_out['stds_ale']
-    xz_centers = [[xx[0], xx[2]] for xx in dic_out['xyz_pred']]
+    xz_centers = [[xx[0], xx[2]] for xx in dic_out['xyz_pred']]     # Used for the bird eye view
 
     if 'front' in args.output_types:
 

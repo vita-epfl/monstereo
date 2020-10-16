@@ -33,17 +33,18 @@ class Trainer:
 
     tasks = ('d', 'x', 'y', 'h', 'w', 'l', 'ori', 'aux')
     val_task = 'd'
-    lambdas = (1, 1, 1, 1, 1, 1, 1, 1)
+    lambdas = (1, 1, 1, 1, 1, 1, 1, 1)  #tuple([1]*len(tasks))
 
     def __init__(self, joints, epochs=100, bs=256, dropout=0.2, lr=0.002,
                  sched_step=20, sched_gamma=1, hidden_size=256, n_stage=3, r_seed=1, n_samples=100,
-                 monocular=False, save=False, print_loss=True):
+                 monocular=False, save=False, print_loss=True, dataset='kitti', kps_3d = False):
         """
         Initialize directories, load the data and parameters for the training
         """
 
         # Initialize directories and parameters
         dir_out = os.path.join('data', 'models')
+
         if not os.path.exists(dir_out):
             warnings.warn("Warning: output directory not found, the model will not be saved")
         dir_logs = os.path.join('data', 'logs')
@@ -88,12 +89,20 @@ class Trainer:
             self.mt_loss = MultiTaskLoss(losses_tr, losses_val, self.lambdas, self.tasks)
         self.mt_loss.to(self.device)
 
+        #! TODO : modifiy those input/outputs (or do a bridge with previous infos)
         if not self.monocular:
             input_size = 68
             output_size = 10
         else:
-            input_size = 34
-            output_size = 9
+            if dataset == 'apolloscape':
+                input_size = 20*2
+                if kps_3d:
+                    output_size = 20
+                else:
+                    output_size = 9
+            else:
+                input_size = 34
+                output_size = 9
 
         now = datetime.datetime.now()
         now_time = now.strftime("%Y%m%d-%H%M")[2:]
@@ -104,9 +113,9 @@ class Trainer:
             self.logger.info("Training arguments: \nepochs: {} \nbatch_size: {} \ndropout: {}"
                              "\nmonocular: {} \nlearning rate: {} \nscheduler step: {} \nscheduler gamma: {}  "
                              "\ninput_size: {} \noutput_size: {}\nhidden_size: {} \nn_stages: {} "
-                             "\nr_seed: {} \nlambdas: {} \ninput_file: {}"
+                             "\nr_seed: {} \nlambdas: {} \ninput_file: {} \ndataset: {} \nkps_3d: {}  "
                              .format(epochs, bs, dropout, self.monocular, lr, sched_step, sched_gamma, input_size,
-                                     output_size, hidden_size, n_stage, r_seed, self.lambdas, self.joints))
+                                     output_size, hidden_size, n_stage, r_seed, self.lambdas, self.joints, dataset, kps_3d))
         else:
             logging.basicConfig(level=logging.INFO)
             self.logger = logging.getLogger(__name__)
@@ -130,7 +139,7 @@ class Trainer:
 
         # Optimizer and scheduler
         all_params = chain(self.model.parameters(), self.mt_loss.parameters())
-        self.optimizer = torch.optim.Adam(params=all_params, lr=lr)
+        self.optimizer = torch.optim.Adam(params=all_params, lr=lr)               
         self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=self.sched_step, gamma=self.sched_gamma)
 
     def train(self):
@@ -151,6 +160,7 @@ class Trainer:
                     self.model.eval()  # Set model to evaluate mode
 
                 for inputs, labels, _, _ in self.dataloaders[phase]:
+                    print(inputs)
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
                     with torch.set_grad_enabled(phase == 'train'):
@@ -262,7 +272,8 @@ class Trainer:
         for idx, task in enumerate(tasks):
             dic_err[clst][task] += float(loss_values[idx].item()) * (outputs.size(0) / size_eval)
 
-        # Distance
+        # Distance 
+        #! ask lorenzo about this
         errs = torch.abs(extract_outputs(outputs)['d'] - extract_labels(labels)['d'])
 
         assert rel_frac > 0.99, "Variance of errors not supported with partial evaluation"

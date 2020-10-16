@@ -26,7 +26,7 @@ def predict(args):
     if 'mono' in args.mode:
         monoloco = Loco(model=args.model, net='monoloco_pp',
                         device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout)
-
+      
     if 'stereo' in args.mode:
         monstereo = Loco(model=args.model, net='monstereo',
                          device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout)

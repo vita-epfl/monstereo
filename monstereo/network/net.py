@@ -34,9 +34,18 @@ class Loco:
             input_size = 34
             output_size = 9
             linear_size = 256
+
         elif self.net == 'monoloco_pp':
             input_size = 34
             output_size = 9
+            if self.dataset =='apolloscape':
+                input_size = 20*2
+                if self.full_position:
+                    output_size = 20
+                else:
+                    output_size = 9
+
+                print(input_size, output_size)
         else:
             input_size = 34
             output_size = 2
