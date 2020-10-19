@@ -46,14 +46,14 @@ class PreprocessKitti:
     dic_names = defaultdict(lambda: defaultdict(list))
     dic_std = defaultdict(lambda: defaultdict(list))
 
-    def __init__(self, dir_ann, iou_min, monocular=False):
+    def __init__(self, dir_ann, iou_min, monocular=False, vehicles=False):
 
         self.dir_ann = dir_ann
         self.iou_min = iou_min
         self.monocular = monocular
         self.dir_gt = os.path.join('data', 'kitti', 'gt')
-        self.dir_images = '/data/lorenzo-data/kitti/original_images/training/image_2'
-        self.dir_byc_l = '/data/lorenzo-data/kitti/object_detection/left'
+        self.dir_images = '/data/maxime-data/kitti/original_images/training/image_2'
+        self.dir_byc_l = '/data/maxime-data/kitti/object_detection/left'
         self.names_gt = tuple(os.listdir(self.dir_gt))
         self.dir_kk = os.path.join('data', 'kitti', 'calib')
         self.list_gt = glob.glob(self.dir_gt + '/*.txt')
@@ -94,7 +94,7 @@ class PreprocessKitti:
                 category = 'all'
             else:  # Remove for original results
                 min_conf = 0.1
-                category = 'pedestrian'
+                category = 'pedestrian' 
 
             # Extract ground truth
             boxes_gt, ys, _, _ = parse_ground_truth(path_gt, category=category, spherical=True)

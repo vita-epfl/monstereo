@@ -1,52 +1,0 @@
-/home/maximebonnesoeur/monstereo/monstereo/train/trainer.py:48: UserWarning: Warning: output directory not found, the model will not be saved
-  warnings.warn("Warning: output directory not found, the model will not be saved")
-/home/maximebonnesoeur/monstereo/monstereo/train/trainer.py:51: UserWarning: Warning: default logs directory not found
-  warnings.warn("Warning: default logs directory not found")
-INFO:monstereo.train.trainer:Sizes of the dataset: {'train': 46923, 'val': 2364}
-INFO:monstereo.train.trainer:Training:
-Training complete in 1m 21s
-INFO:monstereo.train.trainer:Best training Accuracy: 11.296
-INFO:monstereo.train.trainer:Best validation Accuracy for d: 12.309
-INFO:monstereo.train.trainer:Saved weights of the model at epoch: 43
-Traceback (most recent call last):
-  File "/usr/lib/python3.6/runpy.py", line 193, in _run_module_as_main
-    "__main__", mod_spec)
-  File "/usr/lib/python3.6/runpy.py", line 85, in _run_code
-    exec(code, run_globals)
-  File "/home/maximebonnesoeur/monstereo/monstereo/run.py", line 211, in <module>
-    main()
-  File "/home/maximebonnesoeur/monstereo/monstereo/run.py", line 159, in main
-    _ = training.train()
-  File "/home/maximebonnesoeur/monstereo/monstereo/train/trainer.py", line 199, in train
-    print_losses(epoch_losses)
-  File "/home/maximebonnesoeur/monstereo/monstereo/train/trainer.py", line 363, in print_losses
-    plt.savefig('figures/{}_loss_{}.png'.format(phase, el))
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/pyplot.py", line 710, in savefig
-    res = fig.savefig(*args, **kwargs)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/figure.py", line 2035, in savefig
-    self.canvas.print_figure(fname, **kwargs)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/backend_bases.py", line 2263, in print_figure
-    **kwargs)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/itermplot/__init__.py", line 243, in print_png
-    FigureCanvasAgg.print_png(self, filename, **kwargs)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/backends/backend_agg.py", line 526, in print_png
-    with cbook.open_file_cm(filename_or_obj, "wb") as fh:
-  File "/usr/lib/python3.6/contextlib.py", line 81, in __enter__
-    return next(self.gen)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/cbook/__init__.py", line 624, in open_file_cm
-    fh, opened = to_filehandle(path_or_file, mode, True, encoding)
-  File "/home/maximebonnesoeur/.local/lib/python3.6/site-packages/matplotlib/cbook/__init__.py", line 609, in to_filehandle
-    fh = io.open(fname, flag, encoding=encoding)
-FileNotFoundError: [Errno 2] No such file or directory: 'figures/train_loss_all.png'
-Device:  cuda
->>> creating model
->>> model params: 8.464M
->>> loss params: 0
-0 T::44.5  d:4186  x:569  y:440  h:150  w:433  l:2514  ori:86.0  V::18.9  d:2945  x:463  y:307  h:143  w:115  l:588  ori:63.1  
-10 T::12.5  d:1538  x:318  y:230  h:142  w:104  l:253  ori:64.8  V::12.2  d:1428  x:301  y:224  h:141  w:103  l:261  ori:59.3  
-20 T::11.9  d:1422  x:296  y:216  h:141  w:102  l:248  ori:60.9  V::11.3  d:1357  x:282  y:206  h:139  w:97  l:230  ori:57.1  
-30 T::11.5  d:1341  x:280  y:207  h:140  w:101  l:244  ori:59.4  V::11.1  d:1287  x:270  y:203  h:139  w:97  l:230  ori:55.9  
-40 T::11.3  d:1302  x:271  y:201  h:139  w:101  l:242  ori:58.9  V::10.9  d:1248  x:260  y:198  h:138  w:97  l:230  ori:55.9  
-
-
-------------------------------------------------------------------------------------------------------------------------

@@ -25,7 +25,7 @@ def predict(args):
 
     if 'mono' in args.mode:
         monoloco = Loco(model=args.model, net='monoloco_pp',
-                        device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout)
+                        device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout, dataset = args.dataset, kps_3d=args.full_position)
       
     if 'stereo' in args.mode:
         monstereo = Loco(model=args.model, net='monstereo',
@@ -41,32 +41,47 @@ def predict(args):
     data_loader = torch.utils.data.DataLoader(
         data, batch_size=bs, shuffle=False,
         pin_memory=args.pin_memory, num_workers=args.loader_workers)
+    
 
     for idx, (image_paths, image_tensors, processed_images_cpu) in enumerate(data_loader):
         images = image_tensors.permute(0, 2, 3, 1)
 
-        processed_images = processed_images_cpu.to(args.device, non_blocking=True)
-        fields_batch = pifpaf.fields(processed_images)
+
+        
+
+        if not args.joints_folder:
+            processed_images = processed_images_cpu.to(args.device, non_blocking=True)
+            fields_batch = pifpaf.fields(processed_images)
 
         # unbatch stereo pair
         for ii, (image_path, image, processed_image_cpu, fields) in enumerate(zip(
                 image_paths, images, processed_images_cpu, fields_batch)):
 
-            if args.output_directory is None:
-                output_path = image_paths[0]
-            else:
-                file_name = os.path.basename(image_paths[0])
-                output_path = os.path.join(args.output_directory, file_name)
-            print('image', idx, image_path, output_path)
-            keypoint_sets, scores, pifpaf_out = pifpaf.forward(image, processed_image_cpu, fields)
+            if args.joints_folder:
+                assert os.path.isdir(args.joints_folder), 'invalid path dir'
+                car_img = image_path.split("/")[-1].split(".")[0]
 
-            if ii == 0:
-                pifpaf_outputs = [keypoint_sets, scores, pifpaf_out]  # keypoints_sets and scores for pifpaf printing
-                images_outputs = [image]  # List of 1 or 2 elements with pifpaf tensor and monoloco original image
-                pifpaf_outs = {'left': pifpaf_out}
-                image_path_l = image_path
+                if car_img in os.listdir(args.joints_folder):
+                    joints_path = os.path.join(args.joints_folder, car_img+ ".jpg.predictions.json")
+                    
+
             else:
-                pifpaf_outs['right'] = pifpaf_out
+
+                if args.output_directory is None:
+                    output_path = image_paths[0]
+                else:
+                    file_name = os.path.basename(image_paths[0])
+                    output_path = os.path.join(args.output_directory, file_name)
+                print('image', idx, image_path, output_path)
+                keypoint_sets, scores, pifpaf_out = pifpaf.forward(image, processed_image_cpu, fields)
+
+                if ii == 0:
+                    pifpaf_outputs = [keypoint_sets, scores, pifpaf_out]  # keypoints_sets and scores for pifpaf printing
+                    images_outputs = [image]  # List of 1 or 2 elements with pifpaf tensor and monoloco original image
+                    pifpaf_outs = {'left': pifpaf_out}
+                    image_path_l = image_path
+                else:
+                    pifpaf_outs['right'] = pifpaf_out
 
         if args.mode in ('stereo', 'mono'):
             # Extract calibration matrix and ground truth file if present

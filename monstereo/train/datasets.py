@@ -85,6 +85,8 @@ class KeypointsDataset(Dataset):
     def get_cluster_annotations(self, clst):
         """Return normalized annotations corresponding to a certain cluster
         """
+
+        print(self.dic_clst.keys())
         inputs = torch.tensor(self.dic_clst[clst]['X'])
         outputs = torch.tensor(self.dic_clst[clst]['Y']).float()
         count = len(self.dic_clst[clst]['Y'])

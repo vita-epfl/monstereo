@@ -40,6 +40,7 @@ def cli():
                                 help='what to output: json keypoints skeleton for Pifpaf'
                                      'json bird front combined for Monoloco')
     predict_parser.add_argument('--show', help='to show images', action='store_true')
+    predict_parser.add_argument('--joints_folder', help='Folder containing the pifpaf anotations', action='store_true')
 
     # Pifpaf
     nets.cli(predict_parser)
@@ -135,7 +136,7 @@ def main():
             prep.run()
         else:
             from .prep.prep_kitti import PreprocessKitti
-            prep = PreprocessKitti(args.dir_ann, args.iou_min, args.monocular)
+            prep = PreprocessKitti(args.dir_ann, args.iou_min, args.monocular, vehicles)
             if args.activity:
                 prep.prep_activity()
             else:
@@ -146,7 +147,8 @@ def main():
         if args.hyp:
             hyp_tuning = HypTuning(joints=args.joints, epochs=args.epochs,
                                    monocular=args.monocular, dropout=args.dropout,
-                                   multiplier=args.multiplier, r_seed=args.r_seed)
+                                   multiplier=args.multiplier, r_seed=args.r_seed, 
+                                   dataset=args.dataset, kps_3d = args.full_position)
             hyp_tuning.train()
         else:
 

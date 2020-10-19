@@ -24,8 +24,11 @@ class Loco:
     LINEAR_SIZE_MONO = 256
     N_SAMPLES = 100
 
-    def __init__(self, model, net='monstereo', device=None, n_dropout=0, p_dropout=0.2, linear_size=1024):
+    def __init__(self, model, net='monstereo', device=None, n_dropout=0, p_dropout=0.2, linear_size=1024, dataset = 'kitti', kps_3d = False):
         self.net = net
+        self.datatset = dataset
+        self.kps_3d = kps_3d
+
         assert self.net in ('monstereo', 'monoloco', 'monoloco_p', 'monoloco_pp')
         if self.net == 'monstereo':
             input_size = 68
@@ -39,9 +42,9 @@ class Loco:
             input_size = 34
             output_size = 9
             if self.dataset =='apolloscape':
-                input_size = 20*2
-                if self.full_position:
-                    output_size = 20
+                input_size = 24*2
+                if self.kps_3d:
+                    output_size = 24
                 else:
                     output_size = 9
 

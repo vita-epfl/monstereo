@@ -301,6 +301,17 @@ def extract_labels(labels, tasks=None):
         return [dic_gt_out[task] for task in tasks]
 
     dic_gt_out = {key: el.detach().cpu() for key, el in dic_gt_out.items()}
+
+    x = to_cartesian(labels[:, 0:3].detach().cpu(), mode='x')
+    y = to_cartesian(labels[:, 0:3].detach().cpu(), mode='y')
+    d = dic_gt_out['d'][:, 0:1]
+    z = torch.sqrt(d**2 - x**2 - y**2)
+    dic_gt_out['xyzd'] = torch.cat((x, y, z, d), dim=1)
+
+    yaw_pred = torch.atan2(dic_gt_out['ori'][:, 0:1], dic_gt_out['ori'][:, 1:2])
+    yaw_orig = back_correct_angles(yaw_pred, dic_gt_out['xyzd'][:, 0:3])
+    dic_gt_out['yaw'] = (yaw_pred, yaw_orig)  # alpha, ry
+
     return dic_gt_out
 
 

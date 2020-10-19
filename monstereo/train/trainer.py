@@ -6,6 +6,7 @@ given 2d joints
 """
 
 import copy
+import numpy as np
 import os
 import datetime
 import logging
@@ -24,7 +25,7 @@ from .datasets import KeypointsDataset
 from .losses import CompositeLoss, MultiTaskLoss, AutoTuneMultiTaskLoss
 from ..network import extract_outputs, extract_labels
 from ..network.architectures import SimpleModel
-from ..utils import set_logger
+from ..utils import set_logger, threshold_loose, threshold_mean, threshold_strict
 
 
 class Trainer:
@@ -67,7 +68,8 @@ class Trainer:
         self.n_samples = n_samples
         self.r_seed = r_seed
         self.auto_tune_mtl = False
-
+        self.dataset = dataset
+        self.kps_3d = kps_3d
         # Select the device
         use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if use_cuda else "cpu")
@@ -94,10 +96,10 @@ class Trainer:
             input_size = 68
             output_size = 10
         else:
-            if dataset == 'apolloscape':
-                input_size = 20*2
+            if self.dataset == 'apolloscape':
+                input_size = 24*2
                 if kps_3d:
-                    output_size = 20
+                    output_size = 24
                 else:
                     output_size = 9
             else:
@@ -160,7 +162,7 @@ class Trainer:
                     self.model.eval()  # Set model to evaluate mode
 
                 for inputs, labels, _, _ in self.dataloaders[phase]:
-                    print(inputs)
+                    #print(inputs)
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
                     with torch.set_grad_enabled(phase == 'train'):
@@ -273,7 +275,7 @@ class Trainer:
             dic_err[clst][task] += float(loss_values[idx].item()) * (outputs.size(0) / size_eval)
 
         # Distance 
-        #! ask lorenzo about this
+
         errs = torch.abs(extract_outputs(outputs)['d'] - extract_labels(labels)['d'])
 
         assert rel_frac > 0.99, "Variance of errors not supported with partial evaluation"
@@ -285,6 +287,47 @@ class Trainer:
         dic_err[clst]['bi'] += bi * rel_frac
         dic_err[clst]['bi%'] += bi_perc * rel_frac
         dic_err[clst]['std'] = errs.std()
+
+        # Only for apolloscape evaluation :
+        if self.dataset =='apolloscape':
+
+            #print(threshold_mean)
+
+            selected = extract_labels(labels)['d'] < 100
+
+            #print(len(selected), torch.sum(selected))
+            errs = (torch.abs(extract_outputs(outputs)['d'][selected] - extract_labels(labels)['d'][selected]))
+
+            #print(type(selected), type(torch.Tensor([False]*len(selected))))
+            #print("OUTPUTS :\n", extract_outputs(outputs)['xyzd'][:,:3] , "\nLABELS : \n",extract_labels(labels)['xyzd'][:,:3])
+            #print(selected[:,0])
+
+            errs = torch.norm(extract_outputs(outputs)['xyzd'][:,:3] - extract_labels(labels)['xyzd'][:,:3] , p = 2, dim = 1)[selected[:,0]]
+
+            #print(errs)
+
+            dic_err[clst]['threshold_loose_abs']= [torch.sum((errs < threshold_loose[1])).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_strict_abs']= [torch.sum( errs < threshold_strict[1]).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_mean_abs'] = [torch.sum( errs < threshold_mean[1]).double()/torch.sum(selected)]
+
+
+            errs = (torch.abs((extract_outputs(outputs)['d'][selected] - extract_labels(labels)['d'][selected])/ extract_labels(labels)['d'][selected]))
+            
+            
+            equation = torch.abs( (extract_outputs(outputs)['xyzd'][:,:3] - extract_labels(labels)['xyzd'][:,:3] )/extract_labels(labels)['xyzd'][:,:3])
+            errs = torch.norm(equation , p = 2, dim = 1)[selected[:,0]]
+
+            #print(errs)
+            dic_err[clst]['threshold_loose_rel']= [torch.sum((errs < threshold_loose[3])).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_strict_rel']= [torch.sum( errs < threshold_strict[3]).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_mean_rel'] = [torch.sum( errs < threshold_mean[3]).double()/torch.sum(selected)]
+
+
+            errs_angles = (extract_outputs(outputs)['yaw'][0] - extract_labels(labels)['yaw'][0])[selected]
+
+            dic_err[clst]['threshold_loose_ang']= [torch.sum((errs_angles < threshold_loose[2])).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_strict_ang']= [torch.sum( errs_angles < threshold_strict[2]).double()/torch.sum(selected)]
+            dic_err[clst]['threshold_mean_ang'] = [torch.sum( errs_angles < threshold_mean[2]).double()/torch.sum(selected)]
 
         # (Don't) Save auxiliary task results
         if self.monocular:
@@ -310,6 +353,11 @@ class Trainer:
                                      dic_err[clst]['x'] * 100, dic_err[clst]['y'] * 100,
                                      dic_err[clst]['ori'], dic_err[clst]['h'] * 100, dic_err[clst]['w'] * 100,
                                      dic_err[clst]['l'] * 100, dic_err[clst]['aux'] * 100))
+
+            if self.dataset == 'apolloscape':
+
+                self.logger_apolloscape(clst, dic_err)
+
             if self.auto_tune_mtl:
                 self.logger.info("Sigmas: Z: {:.2f}, X: {:.2f}, Y:{:.2f}, H: {:.2f}, W: {:.2f}, L: {:.2f}, ORI: {:.2f}"
                                  " AUX:{:.2f}\n"
@@ -321,6 +369,24 @@ class Trainer:
                                      dic_err[clst]['std'], dic_err[clst]['x'] * 100, dic_err[clst]['y'] * 100,
                                      dic_err[clst]['ori'], dic_err[clst]['h'] * 100, dic_err[clst]['w'] * 100,
                                      dic_err[clst]['l'] * 100, size_eval))
+
+            if self.dataset == 'apolloscape':
+
+                self.logger_apolloscape(clst,dic_err)
+                
+
+
+
+    def logger_apolloscape(self, clst, dic_err):
+        
+        self.logger.info("Apolloscape evaluation, for cluster : {} val set: \n"
+                   "Threshold loose : distance abs ; {:.2f} %, distance rel ; {:.2f} %, angle : {:.2f}, \n"
+                    "Threshold strict : distance abs; {:.2f} %, distance rel ; {:.2f} %, angle : {:.2f}, \n"
+                    "Threshold mean : distance abs ; {:.2f} %, distance rel ; {:.2f} %, angle : {:.2f}, \n"
+                    .format(clst,
+                            dic_err[clst]['threshold_loose_abs'][0]*100, dic_err[clst]['threshold_loose_rel'][0]*100,  dic_err[clst]['threshold_loose_ang'][0], 
+                            dic_err[clst]['threshold_strict_abs'][0]*100,  dic_err[clst]['threshold_strict_rel'][0]*100,  dic_err[clst]['threshold_strict_ang'][0],
+                            dic_err[clst]['threshold_mean_abs'][0] * 100, dic_err[clst]['threshold_mean_rel'][0]*100, dic_err[clst]['threshold_mean_ang'][0] ))
 
     def cout_values(self, epoch, epoch_losses, running_loss):
 

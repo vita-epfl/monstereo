@@ -258,7 +258,9 @@ K_ext= {
 
 
 #Keypoints id used in this following order for openpifpaf
-KPS_MAPPING = [49, 8, 57, 0, 52, 5, 11, 7, 20, 23, 24, 33, 25, 32, 28, 29, 46, 34, 37, 50]
+#KPS_MAPPING = [49, 8, 57, 0, 52, 5, 11, 7, 20, 23, 24, 33, 25, 32, 28, 29, 46, 34, 37, 50]
+KPS_MAPPING = [49, 8, 57, 0, 52, 5, 11, 7, 20, 23, 24, 33, 25, 32, 28, 29, 46, 34, 37, 50, 65, 64, 9, 48]
+
 
 # a label and all meta information
 Label = namedtuple('Label', [
@@ -270,6 +272,11 @@ Label = namedtuple('Label', [
                     # on category level.
     ])
 
+# Thresholds for the evalutaion
+#threshold_formatting =[threshold shape, threshold_trans_abs, threshold_rot, threshold_trans_rel] 
+threshold_loose = [0.5 , 2.8 , np.pi/6, 0.1]
+threshold_strict = [0.75, 1.4 , np.pi/12, 0.05]
+threshold_mean = np.mean([[0.5, 2.8, np.pi/6, 0.1], [0.95, 0.1, np.pi/60, 0.01]], axis = 0)
 
 
 #--------------------------------------------------------------------------------
