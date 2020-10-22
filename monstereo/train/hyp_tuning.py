@@ -15,12 +15,14 @@ from .trainer import Trainer
 
 class HypTuning:
 
-    def __init__(self, joints, epochs, monocular, dropout, multiplier=1, r_seed=1, dataset='kitti', kps_3d = False):
+    def __init__(self, joints, epochs, monocular, dropout, multiplier=1, r_seed=1, vehicles=False, kps_3d = False, dataset = 'kitti'):
         """
         Initialize directories, load the data and parameters for the training
         """
 
         # Initialize Directories
+        self.dataset = 'kitti'
+        self.vehicles = vehicles
         self.joints = joints
         self.monocular = monocular
         self.dropout = dropout
@@ -37,7 +39,7 @@ class HypTuning:
         self.path_log = os.path.join(dir_logs, name_out)
         self.path_model = os.path.join(dir_out, name_out)
 
-        self.dataset = dataset
+        self.dataset = vehicles
         self.kps_3d = kps_3d 
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -81,7 +83,8 @@ class HypTuning:
             training = Trainer(joints=self.joints, epochs=self.num_epochs,
                                bs=bs, monocular=self.monocular, dropout=self.dropout, lr=lr, sched_step=sched_step,
                                sched_gamma=sched_gamma, hidden_size=hidden_size, n_stage=n_stage,
-                               save=False, print_loss=False, r_seed=self.r_seed, dataset=self.dataset, kps_3d = self.kps_3d)
+                               save=False, print_loss=False, r_seed=self.r_seed, vehicles=self.vehicles, kps_3d = self.kps_3d,
+                               dataset = self.dataset)
 
             best_epoch = training.train()
             dic_err, model = training.evaluate()

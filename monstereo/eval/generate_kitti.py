@@ -10,6 +10,8 @@ import math
 from collections import defaultdict
 
 import torch
+from PIL import Image
+
 
 from ..network import Loco
 from ..network.process import preprocess_pifpaf
@@ -19,12 +21,15 @@ from ..utils import get_keypoints, pixel_to_camera, factory_file, factory_basena
 from .stereo_baselines import baselines_association
 from .reid_baseline import get_reid_features, ReID
 
+NUM_ANNOTATIONS = 7481
 
 class GenerateKitti:
 
     METHODS = ['monstereo', 'monoloco_pp', 'monoloco', 'geometric']
+    METHODS = ['monoloco_pp', 'monstereo']
 
-    def __init__(self, model, dir_ann, p_dropout=0.2, n_dropout=0, hidden_size=1024):
+
+    def __init__(self, model, dir_ann, p_dropout=0.2, n_dropout=0, hidden_size=1024, vehicles = False):
 
         # Load monoloco
         use_cuda = torch.cuda.is_available()
@@ -32,15 +37,21 @@ class GenerateKitti:
 
         if 'monstereo' in self.METHODS:
             self.monstereo = Loco(model=model, net='monstereo', device=device, n_dropout=n_dropout, p_dropout=p_dropout,
-                                  linear_size=hidden_size)
-        # model_mono_pp = 'data/models/monoloco-191122-1122.pkl'  # KITTI_p
-        # model_mono_pp = 'data/models/monoloco-191018-1459.pkl'  # nuScenes_p
-        model_mono_pp = 'data/models/stereoloco-200604-0949.pkl'  # KITTI_pp
-        # model_mono_pp = 'data/models/stereoloco-200608-1550.pkl'  # nuScenes_pp
+                                  linear_size=hidden_size, vehicles=vehicles)
+        
 
         if 'monoloco_pp' in self.METHODS:
+            
+            if len(self.METHODS)<=1:
+                model_mono_pp = model
+
+            # model_mono_pp = 'data/models/monoloco-191122-1122.pkl'  # KITTI_p
+            # model_mono_pp = 'data/models/monoloco-191018-1459.pkl'  # nuScenes_p
+            #model_mono_pp = 'data/models/ms-201021-1825.pkl' #KITTI human
+            model_mono_pp= 'data/models/ms-201021-1825-vehicles.pkl' # KITTI vehicle
+            # model_mono_pp = 'data/models/stereoloco-200608-1550.pkl'  # nuScenes_pp
             self.monoloco_pp = Loco(model=model_mono_pp, net='monoloco_pp', device=device, n_dropout=n_dropout,
-                                    p_dropout=p_dropout)
+                                    p_dropout=p_dropout, vehicles = vehicles)
 
         if 'monoloco' in self.METHODS:
             model_mono = 'data/models/monoloco-190717-0952.pkl'  # KITTI
@@ -49,11 +60,12 @@ class GenerateKitti:
                                  p_dropout=p_dropout, linear_size=256)
         self.dir_ann = dir_ann
 
+        self.vehicles = vehicles
         # Extract list of pifpaf files in validation images
-        self.dir_gt = os.path.join('data', 'kitti', 'gt')
-        self.dir_gt_new = os.path.join('data', 'kitti', 'gt_new')
+        self.dir_gt = os.path.join('data', 'kitti', 'training','label_2')
+        self.dir_gt_new = os.path.join('data', 'kitti', 'gt_new')           #? Uselessfor now
         self.set_basename = factory_basename(dir_ann, self.dir_gt)
-        self.dir_kk = os.path.join('data', 'kitti', 'calib')
+        self.dir_kk = os.path.join('data', 'kitti', 'training', 'calib')
         self.dir_byc = '/data/lorenzo-data/kitti/object_detection/left'
 
         # For quick testing
@@ -67,8 +79,8 @@ class GenerateKitti:
         self.baselines = []
         self.cnt_disparity = defaultdict(int)
         self.cnt_no_stereo = 0
-        self.dir_images = os.path.join('data', 'kitti', 'images')
-        self.dir_images_r = os.path.join('data', 'kitti', 'images_r')
+        self.dir_images = os.path.join('data', 'kitti', 'training','image_2')
+        self.dir_images_r = os.path.join('data', 'kitti', 'training','images_3')
         # ReID Baseline
         if 'reid' in self.baselines:
             weights_path = 'data/models/reid_model_market.pkl'
@@ -88,24 +100,39 @@ class GenerateKitti:
             make_new_directory(dir_out[key])
             print("Created empty output directory for {}".format(key))
 
+        
+        create_empty_files(dir_out, self.METHODS)
+
         # Run monoloco over the list of images
-        for basename in self.set_basename:
+        
+        for i, basename in enumerate(self.set_basename):
+
+            
             path_calib = os.path.join(self.dir_kk, basename + '.txt')
             annotations, kk, tt = factory_file(path_calib, self.dir_ann, basename)
-            boxes, keypoints = preprocess_pifpaf(annotations, im_size=(1242, 374))
+
+            path_im = os.path.join(self.dir_images, basename + '.png')
+
+            if i == 0:
+                with Image.open(path_im) as im:
+                    width, height = im.size
+
+            boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=0.1)
             cat = get_category(keypoints, os.path.join(self.dir_byc, basename + '.json'))
+            
             if keypoints:
                 annotations_r, _, _ = factory_file(path_calib, self.dir_ann, basename, mode='right')
-                _, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(1242, 374))
+                _, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=0.1)
 
                 cnt_ann += len(boxes)
                 cnt_file += 1
                 all_inputs, all_outputs = {}, {}
 
                 # STEREOLOCO
-                dic_out = self.monstereo.forward(keypoints, kk, keypoints_r=keypoints_r)
-                all_outputs['monstereo'] = [dic_out['xyzd'], dic_out['bi'], dic_out['epi'],
-                                            dic_out['yaw'], dic_out['h'], dic_out['w'], dic_out['l']]
+                if 'monstereo' in self.METHODS:
+                    dic_out = self.monstereo.forward(keypoints, kk, keypoints_r=keypoints_r)
+                    all_outputs['monstereo'] = [dic_out['xyzd'], dic_out['bi'], dic_out['epi'],
+                                                dic_out['yaw'], dic_out['h'], dic_out['w'], dic_out['l']]
 
                 # MONOLOCO++
                 if 'monoloco_pp' in self.METHODS:
@@ -125,7 +152,7 @@ class GenerateKitti:
 
                 for key in self.METHODS:
                     path_txt = {key: os.path.join(dir_out[key], basename + '.txt')}
-                    save_txts(path_txt[key], boxes, all_outputs[key], params, mode=key, cat=cat)
+                    save_txts(path_txt[key], boxes, all_outputs[key], params, mode=key, cat=cat, vehicles = self.vehicles)
 
                 # STEREO BASELINES
                 if self.baselines:
@@ -137,7 +164,7 @@ class GenerateKitti:
                         all_inputs[key] = boxes
 
                         path_txt[key] = os.path.join(dir_out[key], basename + '.txt')
-                        save_txts(path_txt[key], all_inputs[key], all_outputs[key], params, mode='baseline', cat=cat)
+                        save_txts(path_txt[key], all_inputs[key], all_outputs[key], params, mode='baseline', cat=cat, vehicles = self.vehicles)
 
         print("\nSaved in {} txt {} annotations. Not found {} images".format(cnt_file, cnt_ann, cnt_no_file))
 
@@ -149,7 +176,7 @@ class GenerateKitti:
             print("Maximum possible stereo associations: {:.1f}%".format(self.cnt_disparity['max'] / cnt_ann * 100))
             print("Not found {}/{} stereo files".format(self.cnt_no_stereo, cnt_file))
 
-        create_empty_files(dir_out)  # Create empty files for official evaluation
+          # Create empty files for official evaluation
 
     def _run_stereo_baselines(self, basename, boxes, keypoints, zzs, path_calib):
 
@@ -185,7 +212,7 @@ class GenerateKitti:
         return dic_xyz
 
 
-def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', cat=None):
+def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', cat=None, vehicles = False):
 
     assert mode in ('monoloco', 'monstereo', 'geometric', 'baseline', 'monoloco_pp')
 
@@ -233,10 +260,17 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
 
             output_list = [alpha] + uv_box[:-1] + hwl + cam_0 + [ry, conf, bi, epi]
             category = cat[idx]
-            if category < 0.1:
-                ff.write("%s " % 'Pedestrian')
+
+            if vehicles:
+                if category < 0.1:
+                    ff.write("%s " % 'Car')
+                else:
+                    ff.write("%s " % 'Van')
             else:
-                ff.write("%s " % 'Cyclist')
+                if category < 0.1:
+                    ff.write("%s " % 'Pedestrian')
+                else:
+                    ff.write("%s " % 'Cyclist')
 
             ff.write("%i %i " % (-1, -1))
             for el in output_list:
@@ -244,7 +278,7 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
             ff.write("\n")
 
 
-def create_empty_files(dir_out):
+def create_empty_files(dir_out, methods_2 = ['monoloco_pp', 'monstereo']):
     """Create empty txt files to run official kitti metrics on MonStereo and all other methods"""
 
     methods = ['pseudo-lidar', 'monopsr', '3dop', 'm3d', 'oc-stereo', 'e2e']
@@ -255,7 +289,7 @@ def create_empty_files(dir_out):
     for di, di_orig in zip(dirs, dirs_orig):
         make_new_directory(di)
 
-        for i in range(7481):
+        for i in range(NUM_ANNOTATIONS):
             name = "0" * (6 - len(str(i))) + str(i) + '.txt'
             path_orig = os.path.join(di_orig, name)
             path = os.path.join(di, name)
@@ -263,8 +297,9 @@ def create_empty_files(dir_out):
             # If the file exits, rewrite in new folder, otherwise create empty file
             read_and_rewrite(path_orig, path)
 
-    for method in ('monoloco_pp', 'monstereo'):
-        for i in range(7481):
+    
+    for method in methods_2:
+        for i in range(NUM_ANNOTATIONS):
             name = "0" * (6 - len(str(i))) + str(i) + '.txt'
             ff = open(os.path.join(dir_out[method], name), "a+")
             ff.close()

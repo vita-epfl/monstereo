@@ -24,15 +24,23 @@ class Loco:
     LINEAR_SIZE_MONO = 256
     N_SAMPLES = 100
 
-    def __init__(self, model, net='monstereo', device=None, n_dropout=0, p_dropout=0.2, linear_size=1024, dataset = 'kitti', kps_3d = False):
+    def __init__(self, model, net='monstereo', device=None, n_dropout=0, p_dropout=0.2, linear_size=1024, vehicles = False, kps_3d = False):
         self.net = net
-        self.datatset = dataset
+        self.vehicles = vehicles
         self.kps_3d = kps_3d
 
         assert self.net in ('monstereo', 'monoloco', 'monoloco_p', 'monoloco_pp')
         if self.net == 'monstereo':
             input_size = 68
             output_size = 10
+
+            if self.vehicles:
+                input_size = 24*2*2
+                if self.kps_3d:
+                    output_size = 24
+                else:
+                    output_size = 10
+            
         elif self.net == 'monoloco_p':
             input_size = 34
             output_size = 9
@@ -41,14 +49,14 @@ class Loco:
         elif self.net == 'monoloco_pp':
             input_size = 34
             output_size = 9
-            if self.dataset =='apolloscape':
+            if self.vehicles:
                 input_size = 24*2
                 if self.kps_3d:
                     output_size = 24
                 else:
                     output_size = 9
 
-                print(input_size, output_size)
+                
         else:
             input_size = 34
             output_size = 2
@@ -110,7 +118,7 @@ class Loco:
                     keypoints_r = torch.tensor(keypoints_r).to(self.device)
                 else:
                     keypoints_r = keypoints[0:1, :].clone()
-                inputs, _ = preprocess_monstereo(keypoints, keypoints_r, kk)
+                inputs, _ = preprocess_monstereo(keypoints, keypoints_r, kk, self.vehicles)
                 outputs = self.model(inputs)
 
                 outputs = cluster_outputs(outputs, keypoints_r.shape[0])

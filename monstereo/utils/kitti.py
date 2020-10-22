@@ -157,7 +157,10 @@ def parse_ground_truth(path_gt, category, spherical=False, verbose=False, vehicl
                 assert - math.pi <= yaw <= math.pi
                 alpha = float(line[3])
                 sin, cos, yaw_corr = correct_angle(yaw, xyz)
-                assert min(abs(-yaw_corr - alpha), (abs(yaw_corr - alpha))) < 0.15, "more than 10 degrees of error"
+                #assert min(abs(-yaw_corr - alpha), (abs(yaw_corr - alpha))) < 0.15, "more than 10 degrees of error"
+                if min(abs(-yaw_corr - alpha), (abs(yaw_corr - alpha))) >= 0.15:
+                    "more than 10 degrees of error"
+                    continue
                 if spherical:
                     rtp = to_spherical(xyz)
                     loc = rtp[1:3] + xyz[2:3] + rtp[0:1]  # [theta, psi, z, r]
@@ -210,11 +213,11 @@ def factory_file(path_calib, dir_ann, basename, mode='left'):
 
     if mode == 'left':
         kk, tt = p_left[:]
-        path_ann = os.path.join(dir_ann, basename + '.png.pifpaf.json')
+        path_ann = os.path.join(dir_ann, basename + '.png.predictions.json')
 
     else:
         kk, tt = p_right[:]
-        path_ann = os.path.join(dir_ann + '_right', basename + '.png.pifpaf.json')
+        path_ann = os.path.join(dir_ann + '_right', basename + '.png.predictions.json')
 
     from ..utils import open_annotations
     annotations = open_annotations(path_ann)

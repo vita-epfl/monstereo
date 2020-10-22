@@ -22,21 +22,26 @@ class EvalKitti:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     CLUSTERS = ('easy', 'moderate', 'hard', 'all', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25',
-                '27', '29', '31', '49')
+                '27', '29', '49')
     ALP_THRESHOLDS = ('<0.5m', '<1m', '<2m')
-    OUR_METHODS = ['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
+    OUR_METHODS = ['monoloco_pp', 'monstereo']#['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
     METHODS_MONO = ['m3d', 'monopsr']
-    METHODS_STEREO = ['3dop', 'psf', 'pseudo-lidar', 'e2e', 'oc-stereo']
-    BASELINES = ['task_error', 'pixel_error']
+    METHODS_STEREO = []#['3dop', 'psf', 'pseudo-lidar', 'e2e', 'oc-stereo']
+    BASELINES = []#['task_error', 'pixel_error']
     HEADERS = ('method', '<0.5', '<1m', '<2m', 'easy', 'moderate', 'hard', 'all')
     CATEGORIES = ('pedestrian',)
 
     def __init__(self, thresh_iou_monoloco=0.3, thresh_iou_base=0.3, thresh_conf_monoloco=0.2, thresh_conf_base=0.5,
-                 verbose=False):
+                 verbose=False, vehicles = False):
 
         self.main_dir = os.path.join('data', 'kitti')
-        self.dir_gt = os.path.join(self.main_dir, 'gt')
+
+        self.vehicles= vehicles
+        self.dir_gt = os.path.join(self.main_dir, 'training', "label_2")
         self.methods = self.OUR_METHODS + self.METHODS_MONO + self.METHODS_STEREO
+
+        self.categories = self.CATEGORIES if not vehicles else ('car', )
+
         path_train = os.path.join('splits', 'kitti_train.txt')
         path_val = os.path.join('splits', 'kitti_val.txt')
         dir_logs = os.path.join('data', 'logs')
@@ -70,8 +75,9 @@ class EvalKitti:
 
     def run(self):
         """Evaluate Monoloco performances on ALP and ALE metrics"""
-        for self.category in self.CATEGORIES:
+        for self.category in self.categories:#self.CATEGORIES:
 
+            print(self.category)
             # Initialize variables
             self.errors = defaultdict(lambda: defaultdict(list))
             self.dic_stds = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -154,11 +160,11 @@ class EvalKitti:
                         loc = ([float(x) for x in line[11:14]])
                         dd = math.sqrt(loc[0] ** 2 + loc[1] ** 2 + loc[2] ** 2)
                         dds.append(dd)
-                        cat.append('Pedestrian')
+                        cat.append('Pedestrian'if not self.vehicles else 'Car')
                     else:
                         line = line_str.split()
                         if check_conditions(line,
-                                            category='pedestrian',
+                                            category='pedestrian' if not self.vehicles else 'car',
                                             method=method,
                                             thresh=self.dic_thresh_conf[method]):
                             box = [float(x) for x in line[4:8]]
@@ -332,6 +338,8 @@ class EvalKitti:
     def summary_table(self, all_methods):
         """Tabulate table for ALP and ALE metrics"""
 
+        print("METHODS", all_methods)
+
         alp = [[str(100 * average(self.errors[key][perc]))[:5]
                 for perc in ['<0.5m', '<1m', '<2m']]
                for key in all_methods]
@@ -429,4 +437,7 @@ def extract_indices(idx_to_check, *args):
 
 def average(my_list):
     """calculate mean of a list"""
+    if len(my_list) == 0:
+        return -1
+
     return sum(my_list) / len(my_list)

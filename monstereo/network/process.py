@@ -15,7 +15,7 @@ D_MIN = BF / z_max
 D_MAX = BF / z_min
 
 
-def preprocess_monstereo(keypoints, keypoints_r, kk):
+def preprocess_monstereo(keypoints, keypoints_r, kk, vehicles = False):
     """
     Combine left and right keypoints in all-vs-all settings
     """
@@ -23,7 +23,10 @@ def preprocess_monstereo(keypoints, keypoints_r, kk):
     inputs_l = preprocess_monoloco(keypoints, kk)
     inputs_r = preprocess_monoloco(keypoints_r, kk)
 
-    inputs = torch.empty((0, 68)).to(inputs_l.device)
+    if vehicles:
+        inputs = torch.empty((0, 96)).to(inputs_l.device)
+    else:
+        inputs = torch.empty((0, 68)).to(inputs_l.device)
     for idx, inp_l in enumerate(inputs_l.split(1)):
         clst = 0
         # inp_l = torch.cat((inp_l, cat[:, idx:idx+1]), dim=1)
@@ -202,18 +205,18 @@ def preprocess_pifpaf(annotations, im_size=None, enlarge_boxes=True, min_conf=0.
             box.append(conf)
             boxes.append(box)
             keypoints.append(kps)
-
+        #print("RESULTS", boxes, keypoints)
     return boxes, keypoints
 
 
 def prepare_pif_kps(kps_in):
     """Convert from a list of 51 to a list of 3, 17"""
-
+    #print("KPS",len(kps_in))
     assert len(kps_in) % 3 == 0, "keypoints expected as a multiple of 3"
     xxs = kps_in[0:][::3]
     yys = kps_in[1:][::3]  # from offset 1 every 3
     ccs = kps_in[2:][::3]
-
+    #print("XXS",len(xxs))
     return [xxs, yys, ccs]
 
 

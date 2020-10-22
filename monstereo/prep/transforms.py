@@ -47,17 +47,79 @@ HFLIP = {
 }
 
 
-def transform_keypoints(keypoints, mode):
+CAR_KEYPOINTS = [
+    'front_up_right',       # 1
+    'front_up_left',        # 2
+    'front_light_right',    # 3
+    'front_light_left',     # 4
+    'front_low_right',      # 5
+    'front_low_left',       # 6
+    'central_up_left',      # 7
+    'front_wheel_left',     # 8
+    'rear_wheel_left',      # 9
+    'rear_corner_left',     # 10
+    'rear_up_left',         # 11
+    'rear_up_right',        # 12
+    'rear_light_left',      # 13
+    'rear_light_right',     # 14
+    'rear_low_left',        # 15
+    'rear_low_right',       # 16
+    'central_up_right',     # 17
+    'rear_corner_right',    # 18
+    'rear_wheel_right',     # 19
+    'front_wheel_right',    # 20
+    'rear_plate_left',      # 21
+    'rear_plate_right',     # 22
+    'mirror_edge_left',     # 23
+    'mirror_edge_right',    # 24
+
+]
+
+HFLIP_CAR = {
+    'front_up_right': 'front_up_left',
+    'front_light_right': 'front_light_left',
+    'front_low_right': 'front_low_left',
+    'central_up_left': 'central_up_right',
+    'front_wheel_left': 'front_wheel_right',
+    'rear_wheel_left': 'rear_wheel_right',
+    'rear_corner_left': 'rear_corner_right',
+    'rear_up_left': 'rear_up_right',
+    'rear_light_left': 'rear_light_right',
+    'rear_low_left': 'rear_low_right',
+    'front_up_left': 'front_up_right',
+    'front_light_left': 'front_light_right',
+    'front_low_left': 'front_low_right',
+    'central_up_right': 'central_up_left',
+    'front_wheel_right': 'front_wheel_left',
+    'rear_wheel_right': 'rear_wheel_left',
+    'rear_corner_right': 'rear_corner_left',
+    'rear_up_right': 'rear_up_left',
+    'rear_light_right': 'rear_light_left',
+    'rear_low_right': 'rear_low_left',
+    'rear_plate_left': 'rear_plate_right',
+    'rear_plate_right': 'rear_plate_left',
+    'mirror_edge_left': 'mirror_edge_right',
+    'mirror_edge_right': 'mirror_edge_left'
+}
+
+
+def transform_keypoints(keypoints, mode, vehicles = False):
     """Egocentric horizontal flip"""
     assert mode == 'flip', "mode not recognized"
     kps = np.array(keypoints)
-    dic_kps = {key: kps[:, :, idx] for idx, key in enumerate(COCO_KEYPOINTS)}
-    kps_hflip = np.array([dic_kps[value] for key, value in HFLIP.items()])
+    print("HERE")
+    if vehicles:
+        print("CAR")
+        dic_kps = {key: kps[:, :, idx] for idx, key in enumerate(CAR_KEYPOINTS)}
+        kps_hflip = np.array([dic_kps[value] for key, value in HFLIP_CAR.items()])
+    else:
+        dic_kps = {key: kps[:, :, idx] for idx, key in enumerate(COCO_KEYPOINTS)}
+        kps_hflip = np.array([dic_kps[value] for key, value in HFLIP.items()])
     kps_hflip = np.transpose(kps_hflip, (1, 2, 0))
     return kps_hflip.tolist()
 
 
-def flip_inputs(keypoints, im_w, mode=None):
+def flip_inputs(keypoints, im_w, mode=None, vehicles = False):
     """Horizontal flip the keypoints or the boxes in the image"""
     if mode == 'box':
         boxes = deepcopy(keypoints)
@@ -69,7 +131,7 @@ def flip_inputs(keypoints, im_w, mode=None):
 
     keypoints = np.array(keypoints)
     keypoints[:, 0, :] = im_w - keypoints[:, 0, :]  # Shifted
-    kps_flip = transform_keypoints(keypoints, mode='flip')
+    kps_flip = transform_keypoints(keypoints, mode='flip', vehicles = vehicles)
     return kps_flip
 
 

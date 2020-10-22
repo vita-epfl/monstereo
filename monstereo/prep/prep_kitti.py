@@ -4,6 +4,7 @@
 """Preprocess annotations with KITTI ground-truth"""
 
 import os
+import sys
 import glob
 import copy
 import logging
@@ -48,14 +49,16 @@ class PreprocessKitti:
 
     def __init__(self, dir_ann, iou_min, monocular=False, vehicles=False):
 
+        self.vehicles = vehicles
         self.dir_ann = dir_ann
         self.iou_min = iou_min
         self.monocular = monocular
-        self.dir_gt = os.path.join('data', 'kitti', 'gt')
-        self.dir_images = '/data/maxime-data/kitti/original_images/training/image_2'
+        #self.dir_gt = os.path.join('data', 'kitti', 'gt')
+        self.dir_gt = os.path.join('data', 'kitti', 'training', "label_2")
+        self.dir_images = '/data/maxime-data/kitti/training/image_2'
         self.dir_byc_l = '/data/maxime-data/kitti/object_detection/left'
         self.names_gt = tuple(os.listdir(self.dir_gt))
-        self.dir_kk = os.path.join('data', 'kitti', 'calib')
+        self.dir_kk = os.path.join('data', 'kitti', 'training', 'calib')
         self.list_gt = glob.glob(self.dir_gt + '/*.txt')
         assert os.path.exists(self.dir_gt), "Ground truth dir does not exist"
         assert os.path.exists(self.dir_ann), "Annotation dir does not exist"
@@ -63,8 +66,15 @@ class PreprocessKitti:
         now = datetime.datetime.now()
         now_time = now.strftime("%Y%m%d-%H%M")[2:]
         dir_out = os.path.join('data', 'arrays')
-        self.path_joints = os.path.join(dir_out, 'joints-kitti-' + now_time + '.json')
-        self.path_names = os.path.join(dir_out, 'names-kitti-' + now_time + '.json')
+        identifier = ''
+        if self.vehicles:
+            identifier+='vehicles-'
+        
+        if not self.monocular:
+            identifier+="stereo-"
+
+        self.path_joints = os.path.join(dir_out, 'joints-kitti-' +identifier + now_time + '.json')
+        self.path_names = os.path.join(dir_out, 'names-kitti-' +identifier + now_time + '.json')
         path_train = os.path.join('splits', 'kitti_train.txt')
         path_val = os.path.join('splits', 'kitti_val.txt')
         self.set_train, self.set_val = split_training(self.names_gt, path_train, path_val)
@@ -94,14 +104,16 @@ class PreprocessKitti:
                 category = 'all'
             else:  # Remove for original results
                 min_conf = 0.1
-                category = 'pedestrian' 
+                if self.vehicles:
+                    category = 'car'
+                else:
+                    category = 'pedestrian' 
 
             # Extract ground truth
-            boxes_gt, ys, _, _ = parse_ground_truth(path_gt, category=category, spherical=True)
+            boxes_gt, ys, _, _ = parse_ground_truth(path_gt, category=category, spherical=True, vehicles=self.vehicles)
             cnt_gt[phase] += len(boxes_gt)
             cnt_files += 1
             cnt_files_ped += min(len(boxes_gt), 1)  # if no boxes 0 else 1
-
             # Extract keypoints
             path_calib = os.path.join(self.dir_kk, basename + '.txt')
             annotations, kk, tt = factory_file(path_calib, self.dir_ann, basename)
@@ -115,17 +127,30 @@ class PreprocessKitti:
                 width, height = im.size
 
             boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=min_conf)
-
+            #print(keypoints)
             if keypoints:
-                annotations_r, kk_r, tt_r = factory_file(path_calib, self.dir_ann, basename, mode='right')
-                boxes_r, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=min_conf)
-                cat = get_category(keypoints, os.path.join(self.dir_byc_l, basename + '.json'))
+                
+
+                if not self.monocular:
+                    annotations_r, kk_r, tt_r = factory_file(path_calib, self.dir_ann, basename, mode='right')
+                    boxes_r, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=min_conf)
+                    cat = get_category(keypoints, os.path.join(self.dir_byc_l, basename + '.json'))
+                    
+                else:
+                    keypoints_r = None
+                
+                for keypoint_r, keypoint in zip(keypoints_r , keypoints) :
+                    if len(keypoint_r[0]) != 24:
+                        print("RIGHT",len(keypoint_r[0]))
+                    if len(keypoint[0]) != 24:
+                        print("LEFT",len(keypoint[0]))
 
                 if not keypoints_r:  # Case of no detection
                     all_boxes_gt, all_ys = [boxes_gt], [ys]
                     boxes_r, keypoints_r = boxes[0:1].copy(), keypoints[0:1].copy()
                     all_boxes, all_keypoints = [boxes], [keypoints]
                     all_keypoints_r = [keypoints_r]
+                    
                 else:
 
                     # Horizontal Flipping for training
@@ -133,11 +158,11 @@ class PreprocessKitti:
                         # GT)
                         boxes_gt_flip, ys_flip = flip_labels(boxes_gt, ys, im_w=width)
                         # New left
-                        boxes_flip = flip_inputs(boxes_r, im_w=width, mode='box')
-                        keypoints_flip = flip_inputs(keypoints_r, im_w=width)
+                        boxes_flip = flip_inputs(boxes_r, im_w=width, mode='box', vehicles = self.vehicles)
+                        keypoints_flip = flip_inputs(keypoints_r, im_w=width, vehicles = self.vehicles)
 
                         # New right
-                        keypoints_r_flip = flip_inputs(keypoints, im_w=width)
+                        keypoints_r_flip = flip_inputs(keypoints, im_w=width, vehicles = self.vehicles)
 
                         # combine the 2 modes
                         all_boxes_gt = [boxes_gt, boxes_gt_flip]
@@ -164,13 +189,14 @@ class PreprocessKitti:
                         # Preprocess MonoLoco++
                         if self.monocular:
                             inp = preprocess_monoloco(keypoint, kk).view(-1).tolist()
-                            lab = normalize_hwl(lab)
+                        
+                            #lab = normalize_hwl(lab)
                             if ys[idx_gt][10] < 0.5:
                                 self.dic_jo[phase]['kps'].append(keypoint.tolist())
                                 self.dic_jo[phase]['X'].append(inp)
                                 self.dic_jo[phase]['Y'].append(lab)
                                 self.dic_jo[phase]['names'].append(name)  # One image name for each annotation
-                                append_cluster(self.dic_jo, phase, inp, lab, keypoint)
+                                append_cluster(self.dic_jo, phase, inp, lab, keypoint.tolist())
                                 cnt_mono[phase] += 1
                                 cnt_tot += 1
 
@@ -252,6 +278,7 @@ class PreprocessKitti:
                                             cnt_stereo[phase] += 1
                                         else:
                                             cnt_mono[phase] += 1
+            sys.stdout.write('\r' + 'Saved annotations {}'.format(cnt_files) + '\t')
 
         with open(self.path_joints, 'w') as file:
             json.dump(self.dic_jo, file)
@@ -263,14 +290,24 @@ class PreprocessKitti:
         print(cnt_less_30)
         print('-' * 120)
 
-        print("Number of GT files: {}. Files with at least one pedestrian: {}.  Files not found: {}"
-              .format(cnt_files, cnt_files_ped, cnt_fnf))
-        print("Ground truth matches : {:.1f} % for left images (train and val) and {:.1f} % for right images (train)"
-              .format(100*cnt_match_l / (cnt_gt['train'] + cnt_gt['val']), 100*cnt_match_r / cnt_gt['train']))
-        print("Total annotations: {}".format(cnt_tot))
-        print("Total number of cyclists: {}\n".format(cnt_cyclist))
-        print("Ambiguous instances removed: {}".format(cnt_ambiguous))
-        print("Extra pairs created with horizontal flipping: {}\n".format(cnt_extra_pair))
+        if self.vehicles:
+            print("Number of GT files: {}. Files with at least one vehicle: {}.  Files not found: {}"
+                .format(cnt_files, cnt_files_ped, cnt_fnf))
+            print("Ground truth matches : {:.1f} % for left images (train and val) and {:.1f} % for right images (train)"
+                .format(100*cnt_match_l / (cnt_gt['train'] + cnt_gt['val']), 100*cnt_match_r / cnt_gt['train']))
+            print("Total annotations: {}".format(cnt_tot))
+            print("Total number of vans: {}\n".format(cnt_cyclist))
+            print("Ambiguous instances removed: {}".format(cnt_ambiguous))
+            print("Extra pairs created with horizontal flipping: {}\n".format(cnt_extra_pair))
+        else:
+            print("Number of GT files: {}. Files with at least one pedestrian: {}.  Files not found: {}"
+                .format(cnt_files, cnt_files_ped, cnt_fnf))
+            print("Ground truth matches : {:.1f} % for left images (train and val) and {:.1f} % for right images (train)"
+                .format(100*cnt_match_l / (cnt_gt['train'] + cnt_gt['val']), 100*cnt_match_r / cnt_gt['train']))
+            print("Total annotations: {}".format(cnt_tot))
+            print("Total number of cyclists: {}\n".format(cnt_cyclist))
+            print("Ambiguous instances removed: {}".format(cnt_ambiguous))
+            print("Extra pairs created with horizontal flipping: {}\n".format(cnt_extra_pair))
 
         if not self.monocular:
             print('Instances with stereo correspondence: {:.1f}% '.format(100 * cnt_pair / cnt_pair_tot))
@@ -293,7 +330,10 @@ class PreprocessKitti:
         cnt_tp, cnt_tn = 0, 0
 
         # Extract validation images for evaluation
-        category = 'pedestrian'
+        if self.vehicles:
+            category = 'car'
+        else:
+            category = 'pedestrian'
 
         for name in self.set_val:
             # Read

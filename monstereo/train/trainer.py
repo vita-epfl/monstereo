@@ -30,15 +30,15 @@ from ..utils import set_logger, threshold_loose, threshold_mean, threshold_stric
 
 class Trainer:
     # Constants
-    VAL_BS = 10000
+    VAL_BS = 14000
 
     tasks = ('d', 'x', 'y', 'h', 'w', 'l', 'ori', 'aux')
     val_task = 'd'
-    lambdas = (1, 1, 1, 1, 1, 1, 1, 1)  #tuple([1]*len(tasks))
+    lambdas = tuple([1]*len(tasks))
 
     def __init__(self, joints, epochs=100, bs=256, dropout=0.2, lr=0.002,
                  sched_step=20, sched_gamma=1, hidden_size=256, n_stage=3, r_seed=1, n_samples=100,
-                 monocular=False, save=False, print_loss=True, dataset='kitti', kps_3d = False):
+                 monocular=False, save=False, print_loss=True, vehicles =False, kps_3d = False, dataset ='kitti'):
         """
         Initialize directories, load the data and parameters for the training
         """
@@ -52,7 +52,9 @@ class Trainer:
         if not os.path.exists(dir_logs):
             warnings.warn("Warning: default logs directory not found")
         assert os.path.exists(joints), "Input file not found"
-
+        self.kps_3d = kps_3d
+        self.vehicles = vehicles
+        self.dataset =dataset
         self.joints = joints
         self.num_epochs = epochs
         self.save = save
@@ -68,8 +70,14 @@ class Trainer:
         self.n_samples = n_samples
         self.r_seed = r_seed
         self.auto_tune_mtl = False
-        self.dataset = dataset
-        self.kps_3d = kps_3d
+
+        self.identifier = '' #Used to differentiate the training models
+        if self.vehicles:
+            self.identifier+='-vehicles'
+        
+        if not self.monocular:
+            self.identifier+="-stereo"
+
         # Select the device
         use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if use_cuda else "cpu")
@@ -93,12 +101,20 @@ class Trainer:
 
         #! TODO : modifiy those input/outputs (or do a bridge with previous infos)
         if not self.monocular:
-            input_size = 68
-            output_size = 10
+
+            if self.vehicles :
+                input_size = 24*2*2
+                if self.kps_3d:
+                    output_size = 24
+                else:
+                    output_size = 10
+            else:
+                input_size = 68
+                output_size = 10
         else:
-            if self.dataset == 'apolloscape':
+            if self.vehicles :
                 input_size = 24*2
-                if kps_3d:
+                if self.kps_3d:
                     output_size = 24
                 else:
                     output_size = 9
@@ -106,25 +122,26 @@ class Trainer:
                 input_size = 34
                 output_size = 9
 
+        print("input size : ",input_size, "\noutput size : ", output_size )
         now = datetime.datetime.now()
         now_time = now.strftime("%Y%m%d-%H%M")[2:]
         name_out = 'ms-' + now_time
         if self.save:
-            self.path_model = os.path.join(dir_out, name_out + '.pkl')
+            self.path_model = os.path.join(dir_out, name_out + self.identifier + '.pkl')
             self.logger = set_logger(os.path.join(dir_logs, name_out))
             self.logger.info("Training arguments: \nepochs: {} \nbatch_size: {} \ndropout: {}"
                              "\nmonocular: {} \nlearning rate: {} \nscheduler step: {} \nscheduler gamma: {}  "
                              "\ninput_size: {} \noutput_size: {}\nhidden_size: {} \nn_stages: {} "
-                             "\nr_seed: {} \nlambdas: {} \ninput_file: {} \ndataset: {} \nkps_3d: {}  "
+                             "\nr_seed: {} \nlambdas: {} \ninput_file: {} \nvehicles: {} \nkps_3d: {}  "
                              .format(epochs, bs, dropout, self.monocular, lr, sched_step, sched_gamma, input_size,
-                                     output_size, hidden_size, n_stage, r_seed, self.lambdas, self.joints, dataset, kps_3d))
+                                     output_size, hidden_size, n_stage, r_seed, self.lambdas, self.joints, vehicles, kps_3d))
         else:
             logging.basicConfig(level=logging.INFO)
             self.logger = logging.getLogger(__name__)
 
         # Dataloader
         self.dataloaders = {phase: DataLoader(KeypointsDataset(self.joints, phase=phase),
-                                              batch_size=bs, shuffle=True) for phase in ['train', 'val']}
+                                              batch_size=bs, shuffle=True, drop_last=True) for phase in ['train', 'val']} #the drop_last flag is only there to forget the latest value o the dataset in case of a batch normalization where we don't have more than 1 input in the batch
 
         self.dataset_sizes = {phase: len(KeypointsDataset(self.joints, phase=phase))
                               for phase in ['train', 'val']}
@@ -161,8 +178,9 @@ class Trainer:
                 else:
                     self.model.eval()  # Set model to evaluate mode
 
+                
                 for inputs, labels, _, _ in self.dataloaders[phase]:
-                    #print(inputs)
+                    #print(inputs, phase, inputs.size())
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
                     with torch.set_grad_enabled(phase == 'train'):
@@ -246,10 +264,13 @@ class Trainer:
             # Evaluate performances on different clusters and save statistics
             for clst in self.clusters:
                 inputs, labels, size_eval = dataset.get_cluster_annotations(clst)
+                if inputs is None:
+                    continue
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
 
                 # Forward pass on each cluster
                 outputs = self.model(inputs)
+                print(outputs.size)
                 self.compute_stats(outputs, labels, dic_err['val'], size_eval, clst=clst)
                 self.cout_stats(dic_err['val'], size_eval, clst=clst)
 
@@ -268,7 +289,7 @@ class Trainer:
 
         loss, loss_values = self.mt_loss(outputs, labels, phase='val')
         rel_frac = outputs.size(0) / size_eval
-
+        print(outputs.size(0) , size_eval)
         tasks = self.tasks[:-1] if self.tasks[-1] == 'aux' else self.tasks  # Exclude auxiliary
 
         for idx, task in enumerate(tasks):
@@ -278,6 +299,7 @@ class Trainer:
 
         errs = torch.abs(extract_outputs(outputs)['d'] - extract_labels(labels)['d'])
 
+        #! TO RESOLVE
         assert rel_frac > 0.99, "Variance of errors not supported with partial evaluation"
 
         # Uncertainty
@@ -363,6 +385,7 @@ class Trainer:
                                  " AUX:{:.2f}\n"
                                  .format(*dic_err['sigmas']))
         else:
+
             self.logger.info("Val err clust {} --> D:{:.2f}m,  bi:{:.2f} ({:.1f}%), STD:{:.1f}m   X:{:.1f} Y:{:.1f}  "
                              "Ori:{:.1f}d,   H: {:.0f} W: {:.0f} L:{:.0f}  for {} pp. "
                              .format(clst, dic_err[clst]['d'], dic_err[clst]['bi'], dic_err[clst]['bi%'] * 100,
