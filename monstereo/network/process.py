@@ -40,7 +40,8 @@ def preprocess_monstereo(keypoints, keypoints_r, kk, vehicles = False):
     return inputs, clusters
 
 
-def preprocess_monoloco(keypoints, kk, zero_center=False):
+
+def preprocess_monoloco_old(keypoints, kk, zero_center=False):
 
     """ Preprocess batches of inputs
     keypoints = torch tensors of (m, 3, 17)  or list [3,17]
@@ -60,6 +61,41 @@ def preprocess_monoloco(keypoints, kk, zero_center=False):
         kps_norm = xy1_all
     kps_out = kps_norm[:, :, 0:2].reshape(kps_norm.size()[0], -1)  # no contiguous for view
     # kps_out = torch.cat((kps_out, keypoints[:, 2, :]), dim=1)
+    return kps_out
+
+
+def preprocess_monoloco(keypoints, kk, zero_center=False, kps_3d = False):
+
+    """ Preprocess batches of inputs
+    keypoints = torch tensors of (m, 3, 24)/(m,4,24)  or list [3,24]/[4,24]
+    Outputs =  torch tensors of (m, 48)/(m,72) in meters normalized (z=1) and zero-centered using the center of the box
+    
+    or, if we have the confidences:
+     Outputs =  torch tensors of (m, 72)/(m,96) in meters normalized (z=1) and zero-centered using the center of the box
+    """
+    if kps_3d:
+        nb_dim = 3
+    else: 
+        nb_dim = 2
+    
+    if isinstance(keypoints, list):
+        keypoints = torch.tensor(keypoints).double()
+    if isinstance(kk, list):
+        kk = torch.tensor(kk).double()
+    # Projection in normalized image coordinates and zero-center with the center of the bounding box
+    
+    xy1_all = pixel_to_camera(keypoints[:, 0:nb_dim, :], kk, 10)
+    
+    if zero_center:
+        uv_center = get_keypoints(keypoints, mode='center')
+        xy1_center = pixel_to_camera(uv_center, kk, 10)
+       
+    
+        kps_norm = xy1_all - xy1_center.unsqueeze(1)  # (m, 17, 3) - (m, 1, 3)
+    else:
+        kps_norm = xy1_all
+    kps_out = kps_norm[:, :, 0:nb_dim].reshape(kps_norm.size()[0], -1)  # no contiguous for view
+    #kps_out = torch.cat((kps_out, keypoints[:, nb_dim, :]), dim=1)
     return kps_out
 
 

@@ -19,7 +19,7 @@ def cli():
     # Preprocess input data
     prep_parser.add_argument('--dir_ann', help='directory of annotations of 2d joints', required=True)
     prep_parser.add_argument('--dataset',
-                             help='datasets to preprocess: nuscenes, nuscenes_teaser, nuscenes_mini, kitti, apolloscape',        
+                             help='datasets to preprocess: nuscenes, nuscenes_teaser, nuscenes_mini, kitti, apolloscape ,apolloscape-mini',     
                              default='kitti')
     prep_parser.add_argument('--dir_nuscenes', help='directory of nuscenes devkit', default='data/nuscenes/')
     prep_parser.add_argument('--dir_apolloscape', help='directory of the apolloscape dataser', default='data/apolloscape/' )
@@ -30,6 +30,8 @@ def cli():
     prep_parser.add_argument('--activity', help='new', action='store_true')
     prep_parser.add_argument('--monocular', help='new', action='store_true')
     prep_parser.add_argument('--vehicles', help="Indicate that we are training,evaluating or predicting vehicles position instead of human's one", action ='store_true')
+    prep_parser.add_argument('--buffer', help='indicates the quantity of keypoints used from the car models to do the assignment between 2D adn 3D keypoints', default = 20)
+    prep_parser.add_argument('--radius', help='Radius to determine wether one set of keypoint can be assimilated to which vehicle in the reprojected 3D model view', default = 200)
 
     # Predict (2D pose and/or 3D location from images)
     # General
@@ -91,6 +93,7 @@ def cli():
     training_parser.add_argument('--r_seed', type=int, help='specify the seed for training and hyp tuning', default=1)
     training_parser.add_argument('--activity', help='new', action='store_true')
     training_parser.add_argument('--vehicles', help="Indicate that we are training,evaluating or predicting vehicles position instead of human's one", action ='store_true')
+    
 
     # Evaluation
     eval_parser.add_argument('--dataset', help='datasets to evaluate, kitti, nuscenes or apolloscape', default='kitti')
@@ -133,9 +136,13 @@ def main():
             prep = PreprocessNuscenes(args.dir_ann, args.dir_nuscenes, args.dataset, args.iou_min)
             prep.run()
         elif 'apolloscape' in args.dataset:
-            from .prep.preprocess_apollo import PreprocessApolloscape
-            #prep = PreprocessApolloscape(args.dir_ann, args.dir_nuscenes, args.vehilce, args.iou_min)
-            #prep.run()
+            from .prep.prep_apolloscape import PreprocessApolloscape
+            prep = PreprocessApolloscape(args.dir_ann, dataset = 'train', buffer = args.buffer, radius = args.radius, kps_3d = args.full_position)
+            prep.run()
+        elif 'apolloscape_mini' in args.dataset:
+            from .prep.prep_apolloscape import PreprocessApolloscape
+            prep = PreprocessApolloscape(args.dir_ann, dataset = '3d_car_instance_sample', buffer = args.buffer, radius = args.radius, kps_3d = args.full_position)
+            prep.run()
         else:
             from .prep.prep_kitti import PreprocessKitti
             prep = PreprocessKitti(args.dir_ann, args.iou_min, args.monocular, vehicles= args.vehicles)
@@ -204,8 +211,8 @@ def main():
 
             elif 'apolloscape' in args.dataset:
                 from .train import Trainer
-                training = Trainer(joints=args.joints, hidden_size=args.hidden_size, dataset=args.dataset, monocular = args.monocular, vehicles =True, 
-                                    kps_3d = args.full_position )
+                training = Trainer(joints=args.joints, hidden_size=args.hidden_size, dataset=args.dataset, monocular = args.monocular, 
+                                    vehicles = args.vehicles ,kps_3d = args.full_position )
                 _ = training.evaluate(load=True, model=args.model, debug=False)
             else:
                 raise ValueError("Option not recognized")
