@@ -48,7 +48,7 @@ class GenerateKitti:
             # model_mono_pp = 'data/models/monoloco-191122-1122.pkl'  # KITTI_p
             # model_mono_pp = 'data/models/monoloco-191018-1459.pkl'  # nuScenes_p
             #model_mono_pp = 'data/models/ms-201021-1825.pkl' #KITTI human
-            model_mono_pp= 'data/models/ms-201021-1825-vehicles.pkl' # KITTI vehicle
+            model_mono_pp = 'data/models/ms-201022-1548-vehicles.pkl' # KITTI vehicle
             # model_mono_pp = 'data/models/stereoloco-200608-1550.pkl'  # nuScenes_pp
             self.monoloco_pp = Loco(model=model_mono_pp, net='monoloco_pp', device=device, n_dropout=n_dropout,
                                     p_dropout=p_dropout, vehicles = vehicles)

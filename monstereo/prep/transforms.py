@@ -107,9 +107,7 @@ def transform_keypoints(keypoints, mode, vehicles = False):
     """Egocentric horizontal flip"""
     assert mode == 'flip', "mode not recognized"
     kps = np.array(keypoints)
-    print("HERE")
     if vehicles:
-        print("CAR")
         dic_kps = {key: kps[:, :, idx] for idx, key in enumerate(CAR_KEYPOINTS)}
         kps_hflip = np.array([dic_kps[value] for key, value in HFLIP_CAR.items()])
     else:

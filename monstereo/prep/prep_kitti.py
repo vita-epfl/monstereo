@@ -139,12 +139,6 @@ class PreprocessKitti:
                 else:
                     keypoints_r = None
                 
-                for keypoint_r, keypoint in zip(keypoints_r , keypoints) :
-                    if len(keypoint_r[0]) != 24:
-                        print("RIGHT",len(keypoint_r[0]))
-                    if len(keypoint[0]) != 24:
-                        print("LEFT",len(keypoint[0]))
-
                 if not keypoints_r:  # Case of no detection
                     all_boxes_gt, all_ys = [boxes_gt], [ys]
                     boxes_r, keypoints_r = boxes[0:1].copy(), keypoints[0:1].copy()
@@ -190,7 +184,7 @@ class PreprocessKitti:
                         if self.monocular:
                             inp = preprocess_monoloco(keypoint, kk).view(-1).tolist()
                         
-                            #lab = normalize_hwl(lab)
+                            lab = normalize_hwl(lab)
                             if ys[idx_gt][10] < 0.5:
                                 self.dic_jo[phase]['kps'].append(keypoint.tolist())
                                 self.dic_jo[phase]['X'].append(inp)
@@ -266,7 +260,7 @@ class PreprocessKitti:
                                     # inp_x = input[::2]
                                     # inp = torch.cat((inp_x, input - input_r)).tolist()
 
-                                    # lab = normalize_hwl(lab)
+                                    lab = normalize_hwl(lab)
                                     if ys[idx_gt][10] < 0.5:
                                         self.dic_jo[phase]['kps'].append(keypoint)
                                         self.dic_jo[phase]['X'].append(inp)

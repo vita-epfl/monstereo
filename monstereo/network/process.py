@@ -79,9 +79,9 @@ def preprocess_monoloco(keypoints, kk, zero_center=False, kps_3d = False):
         nb_dim = 2
     
     if isinstance(keypoints, list):
-        keypoints = torch.tensor(keypoints).double()
+        keypoints = torch.tensor(keypoints)
     if isinstance(kk, list):
-        kk = torch.tensor(kk).double()
+        kk = torch.tensor(kk)
     # Projection in normalized image coordinates and zero-center with the center of the bounding box
     
     xy1_all = pixel_to_camera(keypoints[:, 0:nb_dim, :], kk, 10)
