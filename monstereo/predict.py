@@ -14,6 +14,7 @@ from .visuals.pifpaf_show import KeypointPainter, image_canvas
 from .network import PifPaf, ImageList, Loco
 from .network.process import factory_for_gt, preprocess_pifpaf
 
+from .utils import open_annotations
 
 def predict(args):
 
@@ -29,7 +30,7 @@ def predict(args):
       
     if 'stereo' in args.mode:
         monstereo = Loco(model=args.model, net='monstereo',
-                         device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout)
+                         device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout, vehicles = args.vehicles, kps_2d=args.full_position)
 
     # data
     data = ImageList(args.images, scale=args.scale)
@@ -45,33 +46,54 @@ def predict(args):
 
     for idx, (image_paths, image_tensors, processed_images_cpu) in enumerate(data_loader):
         images = image_tensors.permute(0, 2, 3, 1)
-
-
         
 
-        if not args.joints_folder:
+        if not args.joints_folder is None:
             processed_images = processed_images_cpu.to(args.device, non_blocking=True)
             fields_batch = pifpaf.fields(processed_images)
 
+        
         # unbatch stereo pair
         for ii, (image_path, image, processed_image_cpu, fields) in enumerate(zip(
                 image_paths, images, processed_images_cpu, fields_batch)):
 
-            if args.joints_folder:
-                assert os.path.isdir(args.joints_folder), 'invalid path dir'
-                car_img = image_path.split("/")[-1].split(".")[0]
 
-                if car_img in os.listdir(args.joints_folder):
-                    joints_path = os.path.join(args.joints_folder, car_img+ ".jpg.predictions.json")
-                    
+            if not args.joints_folder is None:
+                assert os.path.isdir(args.joints_folder), 'invalid path dir'
+                img_id = image_path.split("/")[-1].split(".")[0]
+                img_type = image_path.split("/")[-1].split(".")[1]
+
+
+                if ii == 0:
+                    print("HERE")
+                    print(img_id)
+
+                    if img_id + "." +img_type+".predictions.json" in os.listdir(args.joints_folder):
+                        joints_path = os.path.join(args.joints_folder, img_id + "."+img_type+".predictions.json")
+                        pifpaf_out = open_annotations(joints_path)
+
+                        pifpaf_outputs = [None, None, pifpaf_out]  # keypoints_sets and scores for pifpaf printing
+                        images_outputs = [image]  # List of 1 or 2 elements with pifpaf tensor and monoloco original image
+                        pifpaf_outs = {'left': pifpaf_out}
+                        image_path_l = image_path
+                        print("THERE")
+
+                        output_path = "."
+
+                else:
+                    if img_id in os.listdir(args.joints_folder+'_right'):
+                        joints_path = os.path.join(args.joints_folder+'_right', img_id + "."+img_type+".predictions.json")
+                        pifpaf_out = open_annotations(joints_path)
+                        pifpaf_outs['right'] = pifpaf_out
 
             else:
-
                 if args.output_directory is None:
                     output_path = image_paths[0]
                 else:
                     file_name = os.path.basename(image_paths[0])
                     output_path = os.path.join(args.output_directory, file_name)
+                    
+
                 print('image', idx, image_path, output_path)
                 keypoint_sets, scores, pifpaf_out = pifpaf.forward(image, processed_image_cpu, fields)
 
@@ -111,23 +133,34 @@ def predict(args):
             dic_out = defaultdict(list)
             kk = None
 
-        factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=dic_out, kk=kk)
+        factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=dic_out, kk=kk, vehicles=args.vehicles)
         print('Image {}\n'.format(cnt) + '-' * 120)
         cnt += 1
 
 
-def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=None, kk=None):
+def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=None, kk=None, vehicles = False):
     """Output json files or images according to the choice"""
 
     # Save json file
     if args.mode == 'pifpaf':
         keypoint_sets, scores, pifpaf_out = pifpaf_outputs[:]
 
-        # Visualizer
-        keypoint_painter = KeypointPainter(show_box=False)
-        skeleton_painter = KeypointPainter(show_box=False, color_connections=True, markersize=1, linewidth=4)
+        CAR_SKELETON = [[1, 17], [1, 2], [1, 3], [2, 4], [2, 7], [3, 4], [3, 5], 
+            [4, 6], [5, 6], [6, 8], [8, 9], [7, 10], [9, 10], [10, 13], [18, 14],
+            [23, 7], [23, 8], [23, 9], [8, 4], [23, 4], [23, 2], [11, 12], [11, 13], 
+            [11, 7], [13, 14], [13, 15], [12, 14], [12, 17], [14, 16], [15, 16], [21, 22], 
+            [21, 13], [21, 15], [21, 9], [22, 16], [22, 14], [22, 19], [16, 19], [15, 9], [18, 19], 
+            [18, 17], [19, 20], [20, 5], [17, 24], [24, 19], [24, 1], [20, 3], [24, 3], [24, 20]]
 
-        if 'json' in args.output_types and keypoint_sets.size > 0:
+        if vehicles:
+            skeleton = CAR_SKELETON
+        else:
+            skeleton = False
+        # Visualizer
+        keypoint_painter = KeypointPainter(show_box=False, skeleton =skeleton)
+        skeleton_painter = KeypointPainter(show_box=False, color_connections=True, markersize=1, linewidth=4, skeleton = skeleton)
+
+        if 'json' in args.output_types and pifpaf_out.size > 0:
             with open(output_path + '.pifpaf.json', 'w') as f:
                 json.dump(pifpaf_out, f)
 
@@ -145,7 +178,7 @@ def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=N
                               show=args.show,
                               fig_width=args.figure_width,
                               dpi_factor=args.dpi_factor) as ax:
-                skeleton_painter.keypoints(ax, keypoint_sets, scores=scores)
+                skeleton_painter.keypoints(ax, pifpaf_out, scores=scores)
 
     else:
         if any((xx in args.output_types for xx in ['front', 'bird', 'combined'])):

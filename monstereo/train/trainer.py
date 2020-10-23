@@ -279,6 +279,7 @@ class Trainer:
             torch.save(self.model.state_dict(), self.path_model)
             print('-' * 120)
             self.logger.info("\nmodel saved: {} \n".format(self.path_model))
+            print(self.path_model)
         else:
             self.logger.info("\nmodel not saved\n")
 

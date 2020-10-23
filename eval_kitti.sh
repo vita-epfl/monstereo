@@ -67,3 +67,5 @@ CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_a
 
 
 fi
+
+#CUDA_VISIBLE_DEVICES=1 python3 -m  monstereo.run predict /home/maximebonnesoeur/monstereo/data/kitti/training/image_2/00000*.png --joints_folder /home/maximebonnesoeur/monstereo/data/kitti-pifpaf/annotations_car --mode mono --model /home/maximebonnesoeur/monstereo/data/models/ms-201023-1411-vehicles.pkl --show --output_types combined --vehicles --path_gt /home/maximebonnesoeur/monstereo/data/arrays/names-kitti-vehicles-201022-1537.json --draw_box

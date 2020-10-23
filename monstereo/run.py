@@ -43,8 +43,9 @@ def cli():
                                 help='what to output: json keypoints skeleton for Pifpaf'
                                      'json bird front combined for Monoloco')
     predict_parser.add_argument('--show', help='to show images', action='store_true')
-    predict_parser.add_argument('--joints_folder', help='Folder containing the pifpaf anotations', action='store_true')
-
+    predict_parser.add_argument('--joints_folder', help='Folder containing the pifpaf anotations',default=None)
+    predict_parser.add_argument('--vehicles', help="Indicate that we are training,evaluating or predicting vehicles position instead of human's one", action ='store_true')
+    predict_parser.add_argument('--full_position', help='Change the output size of the network to train the network on the 3D position of the keypoints', action='store_true')
     # Pifpaf
     nets.cli(predict_parser)
     decoder.cli(predict_parser, force_complete_pose=True, instance_threshold=0.15)
@@ -116,6 +117,7 @@ def cli():
     eval_parser.add_argument('--net', help='Choose network: monoloco, monoloco_p, monoloco_pp, monstereo')
     eval_parser.add_argument('--full_position', help='Change the output size of the network to train the network on the 3D position of the keypoints', action='store_true')
     eval_parser.add_argument('--vehicles', help="Indicate that we are training,evaluating or predicting vehicles position instead of human's one", action ='store_true')
+    eval_parser.add_argument('--model-mono', help='mono model that can be added to compute the score evaluation for monoloco_pp', default = None)
     args = parser.parse_args()
     return args
 
@@ -195,7 +197,7 @@ def main():
             if args.generate:
                 from .eval.generate_kitti import GenerateKitti
                 kitti_txt = GenerateKitti(args.model, args.dir_ann, p_dropout=args.dropout, n_dropout=args.n_dropout,
-                                          hidden_size=args.hidden_size, vehicles = args.vehicles)
+                                          hidden_size=args.hidden_size, vehicles = args.vehicles, model_mono = args.model_mono)
                 kitti_txt.run()
 
             if args.dataset == 'kitti':
