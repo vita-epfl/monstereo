@@ -81,7 +81,7 @@ def predict(args):
                         output_path = "."
 
                 else:
-                    if img_id in os.listdir(args.joints_folder+'_right'):
+                    if img_id + "." +img_type+".predictions.json" in os.listdir(args.joints_folder+'_right'):
                         joints_path = os.path.join(args.joints_folder+'_right', img_id + "."+img_type+".predictions.json")
                         pifpaf_out = open_annotations(joints_path)
                         pifpaf_outs['right'] = pifpaf_out
