@@ -81,6 +81,8 @@ def get_keypoints(keypoints, mode):
 
     kps_in = keypoints[:, 0:2, :]  # (m, 2, 17) #Only take the kepoints positions and forget the confidence metric
     if mode == 'center':
+        kps_in = keypoints[:, 0:2, (keypoints[:,2, :]>0)[0]]    #Remove the non detected keypoints
+        print("$KPS_IN", kps_in)
         kps_max, _ = kps_in.max(2)  # returns value, indices
         kps_min, _ = kps_in.min(2)
         kps_out = (kps_max - kps_min) / 2 + kps_min   # (m, 2) as keepdims is False

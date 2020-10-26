@@ -181,10 +181,15 @@ def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=N
                 skeleton_painter.keypoints(ax, pifpaf_out, scores=scores)
 
     else:
-        if any((xx in args.output_types for xx in ['front', 'bird', 'combined'])):
+        if any((xx in args.output_types for xx in ['front', 'bird', 'combined', 'combined_pifpaf'])):
+            
+
+            
             epistemic = False
             if args.n_dropout > 0:
                 epistemic = True
+
+            
 
             if dic_out['boxes']:  # Only print in case of detections
                 printer = Printer(images_outputs[1], output_path, kk, output_types=args.output_types

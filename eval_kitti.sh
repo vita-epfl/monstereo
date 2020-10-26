@@ -1,9 +1,9 @@
 #!/bin/bash
 cuda_device_to_use='1'
 
-use_car='0'
+use_car='1'
 
-epochs='100'
+epochs='200'
 
 hidden_size='1024' 
 

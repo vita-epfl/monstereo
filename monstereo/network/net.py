@@ -231,6 +231,7 @@ class Loco:
             dic_out['uv_centers'].append(uv_center)
             dic_out['uv_shoulders'].append(uv_shoulder)
             dic_out['uv_heads'].append(uv_head)
+            dic_out['keypoints'].append(kps)
 
             # For MonStereo / MonoLoco++
             try:

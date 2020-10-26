@@ -43,7 +43,7 @@ class Printer:
 
         # Define variables of the class to change for every image
         self.mpl_im0 = self.stds_ale = self.stds_epi = self.xx_gt = self.zz_gt = self.xx_pred = self.zz_pred =\
-            self.dds_real = self.uv_centers = self.uv_shoulders = self.uv_kps = self.boxes = self.boxes_gt = \
+            self.dds_real = self.uv_centers = self.uv_shoulders =  self.uv_kps = self.boxes = self.boxes_gt = \
             self.uv_camera = self.radius = self.auxs = None
 
     def _process_results(self, dic_ann):
@@ -62,9 +62,19 @@ class Printer:
 
         self.dds_real = dic_ann['dds_real']
         self.uv_shoulders = dic_ann['uv_shoulders']
+        self.uv_centers = dic_ann['uv_centers']
         self.boxes = dic_ann['boxes']
         self.boxes_gt = dic_ann['boxes_gt']
 
+        print("shoulder",self.uv_shoulders)
+        print("centers",self.uv_centers)
+        
+        print("BOXES",self.boxes)
+        print("BOXES_GT",self.boxes_gt)
+
+        print("XX_GT", self.xx_gt)
+        print("XX_PRED", self.xx_pred)
+        #print("keypoints",dic_ann['keypoints'])
         self.uv_camera = (int(self.im.size[0] / 2), self.im.size[1])
         self.radius = 11 / 1600 * self.width
         if dic_ann['aux']:
@@ -147,6 +157,8 @@ class Printer:
         # Process the annotation dictionary of monoloco
         self._process_results(dic_out)
 
+        print("ZZ_GT", self.zz_gt)
+
         # whether to include instances that don't match the ground-truth
         iterator = range(len(self.zz_pred)) if show_all else range(len(self.zz_gt))
         if not iterator:
@@ -160,12 +172,13 @@ class Printer:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
 
                 color = self.cmap((self.zz_pred[idx] % self.z_max) / self.z_max)
-                self.draw_circle(axes, self.uv_shoulders[idx], color)
+                color = 'red'
+                self.draw_circle(axes, self.uv_centers[idx], color)
                 if draw_box:
                     self.draw_boxes(axes, idx, color)
 
                 if draw_text:
-                    self.draw_text_front(axes, self.uv_shoulders[idx], num)
+                    self.draw_text_front(axes, self.uv_centers[idx], num)
                     num += 1
 
         # Draw the bird figure
