@@ -65,8 +65,6 @@ def predict(args):
 
 
                 if ii == 0:
-                    print("HERE")
-                    print(img_id)
 
                     if img_id + "." +img_type+".predictions.json" in os.listdir(args.joints_folder):
                         joints_path = os.path.join(args.joints_folder, img_id + "."+img_type+".predictions.json")
@@ -76,8 +74,6 @@ def predict(args):
                         images_outputs = [image]  # List of 1 or 2 elements with pifpaf tensor and monoloco original image
                         pifpaf_outs = {'left': pifpaf_out}
                         image_path_l = image_path
-                        print("THERE")
-
                         output_path = "."
 
                 else:

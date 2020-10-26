@@ -81,8 +81,32 @@ def get_keypoints(keypoints, mode):
 
     kps_in = keypoints[:, 0:2, :]  # (m, 2, 17) #Only take the kepoints positions and forget the confidence metric
     if mode == 'center':
-        kps_in = keypoints[:, 0:2, (keypoints[:,2, :]>0)[0]]    #Remove the non detected keypoints
-        print("$KPS_IN", kps_in)
+        #print("Keypoints",keypoints)
+        #print("OLD KPS_IN", kps_in)
+
+        new_keypoints = keypoints
+
+        for i, kps in enumerate(keypoints):
+            mean = keypoints[i, 0:2, (keypoints[i,2, :]>0) ].mean(dim = 1)
+            new_keypoints[i, 0:2, (keypoints[i,2, :]<=0)] = torch.transpose(mean.repeat((keypoints[i,2, :]<=0).sum() , 1), 0, 1)
+
+
+        """for i, kps in enumerate(new_keypoints):
+            kps_in.append(new_keypoints[:, 0:2, (new_keypoints[i,2, :]>0) ])
+        
+        kps_in =torch.cat(kps_in, dim = 0)"""
+
+        kps_in = new_keypoints[:, 0:2, :]
+        
+
+        #print("$KPS_IN", kps_in)
+
+
+
+        if len(kps_in.size()) == 2:  # add batch dim
+            kps_in = kps_in.unsqueeze(0)
+
+
         kps_max, _ = kps_in.max(2)  # returns value, indices
         kps_min, _ = kps_in.min(2)
         kps_out = (kps_max - kps_min) / 2 + kps_min   # (m, 2) as keepdims is False
