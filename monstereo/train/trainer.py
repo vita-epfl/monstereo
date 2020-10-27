@@ -99,7 +99,6 @@ class Trainer:
             self.mt_loss = MultiTaskLoss(losses_tr, losses_val, self.lambdas, self.tasks)
         self.mt_loss.to(self.device)
 
-        #! TODO : modifiy those input/outputs (or do a bridge with previous infos)
         if not self.monocular:
 
             if self.vehicles :
@@ -452,6 +451,9 @@ def print_losses(epoch_losses):
     for idx, phase in enumerate(epoch_losses):
         for idx_2, el in enumerate(epoch_losses['train']):
             plt.figure(idx + idx_2)
+            plt.title('{} loss for the parameter {}'.format(phase, el))
+            plt.xlabel('Epochs')
+            plt.ylabel('loss of {}'.format(el))
             plt.plot(epoch_losses[phase][el][10:], label='{} Loss: {}'.format(phase, el))
             plt.savefig('figures/{}_loss_{}.png'.format(phase, el))
             plt.close()

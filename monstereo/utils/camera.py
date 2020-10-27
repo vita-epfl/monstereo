@@ -88,13 +88,8 @@ def get_keypoints(keypoints, mode):
 
         for i, kps in enumerate(keypoints):
             mean = keypoints[i, 0:2, (keypoints[i,2, :]>0) ].mean(dim = 1)
+            mean[mean != mean] = 0      # set Nan to 0
             new_keypoints[i, 0:2, (keypoints[i,2, :]<=0)] = torch.transpose(mean.repeat((keypoints[i,2, :]<=0).sum() , 1), 0, 1)
-
-
-        """for i, kps in enumerate(new_keypoints):
-            kps_in.append(new_keypoints[:, 0:2, (new_keypoints[i,2, :]>0) ])
-        
-        kps_in =torch.cat(kps_in, dim = 0)"""
 
         kps_in = new_keypoints[:, 0:2, :]
         
