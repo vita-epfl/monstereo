@@ -26,7 +26,7 @@ NUM_ANNOTATIONS = 7481
 class GenerateKitti:
 
     METHODS = ['monstereo', 'monoloco_pp', 'monoloco', 'geometric']
-    METHODS = ['monoloco_pp', 'monstereo']
+    METHODS = ['monoloco_pp']
 
 
     def __init__(self, model, dir_ann, p_dropout=0.2, n_dropout=0, hidden_size=1024, vehicles = False, model_mono = None):
@@ -45,8 +45,7 @@ class GenerateKitti:
             if len(self.METHODS)<=1:
                 model_mono_pp = model
 
-            # model_mono_pp = 'data/models/monoloco-191122-1122.pkl'  # KITTI_p
-            # model_mono_pp = 'data/models/monoloco-191018-1459.pkl'  # nuScenes_p
+
             #model_mono_pp = 'data/models/ms-201021-1825.pkl' #KITTI human
             if model_mono is not None:
                 model_mono_pp = model_mono
@@ -66,7 +65,7 @@ class GenerateKitti:
         self.vehicles = vehicles
         # Extract list of pifpaf files in validation images
         self.dir_gt = os.path.join('data', 'kitti', 'training','label_2')
-        self.dir_gt_new = os.path.join('data', 'kitti', 'gt_new')           #? Uselessfor now
+        self.dir_gt_new = os.path.join('data', 'kitti', 'gt_new')
         self.set_basename = factory_basename(dir_ann, self.dir_gt)
         self.dir_kk = os.path.join('data', 'kitti', 'training', 'calib')
         self.dir_byc = '/data/lorenzo-data/kitti/object_detection/left'
@@ -120,12 +119,15 @@ class GenerateKitti:
                 with Image.open(path_im) as im:
                     width, height = im.size
 
-            boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=0.1)
+            #!bookmark
+            min_conf = 0.1
+            #min_conf = 0.35*min_conf
+            boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=min_conf)
             cat = get_category(keypoints, os.path.join(self.dir_byc, basename + '.json'))
             
             if keypoints:
                 annotations_r, _, _ = factory_file(path_calib, self.dir_ann, basename, mode='right')
-                _, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=0.1)
+                _, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=min_conf)
 
                 cnt_ann += len(boxes)
                 cnt_file += 1
@@ -252,14 +254,19 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
             else:
                 alpha, ry, hwl = -10., -10., [0, 0, 0]
 
-            # Set the scale to obtain (approximately) same recall at evaluation
+            # Set the scale to obtain (approximately) same recall at evaluation¨
+            #!bookmark
+            n = 1.0
             if mode == 'monstereo':
                 conf_scale = 0.03
+                conf_scale = n*conf_scale
             elif mode == 'monoloco_pp':
                 conf_scale = 0.033
+                conf_scale = n*conf_scale
             else:
                 conf_scale = 0.055
-            conf = conf_scale * (uv_box[-1]) / (bi / math.sqrt(xx ** 2 + yy * 2 + zz ** 2))
+
+            conf = conf_scale * (uv_box[-1]) / (bi / math.sqrt(xx ** 2 + yy ** 2 + zz ** 2))
 
             output_list = [alpha] + uv_box[:-1] + hwl + cam_0 + [ry, conf, bi, epi]
             category = cat[idx]
