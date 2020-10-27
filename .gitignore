@@ -12,3 +12,4 @@ kitti-eval/build
 kitti-eval/cmake-build-debug
 figures/
 visual_tests/
+docs/
