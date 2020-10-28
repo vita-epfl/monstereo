@@ -338,12 +338,6 @@ class Printer:
             handles, labels = axes[1].get_legend_handles_labels()
             by_label = OrderedDict(zip(labels, handles))
             axes[1].legend(by_label.values(), by_label.keys(), loc='best')
-        else:
-            # Front eye view legend
-            handles, labels = axes[0].get_legend_handles_labels()
-            by_label = OrderedDict(zip(labels, handles))
-            print(by_label)
-            axes[0].legend(by_label.values(), by_label.keys(), loc='best')
 
 
 def get_angle(xx, zz):
