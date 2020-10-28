@@ -159,7 +159,7 @@ class Printer:
         self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
-                color = 'deepskyblue' if self.auxs[idx] > 0.5 else 'r'
+                color = 'deepskyblue' if self.auxs[idx] > 0.3 else 'r'
                 self._draw_text(axes[0],
                                 self.uv_heads[idx][0],
                                 self.uv_heads[idx][1],
@@ -198,12 +198,12 @@ class Printer:
         """Adapted from https://github.com/vita-epfl/openpifpaf"""
 
         z_str = str(z).split(sep='.')
-        text = z_str[0] + '.' + z_str[1][0] + ' m'
-        bbox_config = {'facecolor': color, 'alpha': 0.5, 'linewidth': 0}
+        text = z_str[0] + '.' + z_str[1][0]
+        bbox_config = {'facecolor': color, 'alpha': 0.6, 'linewidth': 0}
         ax.annotate(
             text,
             (x, y),
-            fontsize=12,
+            fontsize=11,
             xytext=(5.0, 5.0),
             textcoords='offset points',
             color='white',
