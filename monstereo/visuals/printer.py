@@ -163,7 +163,7 @@ class Printer:
                 self._draw_text(axes[0],
                                 self.uv_heads[idx][0],
                                 self.uv_heads[idx][1],
-                                self.dds_pred[idx],
+                                self.dd_pred[idx],
                                 color=color)
                 if draw_box:
                     self.draw_boxes(axes, idx, color)
