@@ -3,7 +3,7 @@ cuda_device_to_use='1'
 
 use_car='1'
 
-epochs='100'
+epochs='200'
 
 hidden_size='1024' 
 
@@ -28,6 +28,8 @@ joints_mono_car='data/arrays/joints-kitti-vehicles-201027-1611.json' # with the 
 joints_mono_car='data/arrays/joints-kitti-vehicles-201027-1647.json' # -> a constant value of 12000 -> BAD (-100)
 
 joints_mono_car='data/arrays/joints-kitti-vehicles-201027-1628.json' # -> a constant value of 0 -> Best results so far
+
+joints_mono_car='data/arrays/joints-kitti-vehicles-201027-1837.json' # second test with the mean value only -> best results attained with this new technique !!
 
 dir_ann_car='/data/maxime-data/outputs_openpifpaf_kitti/annotations_car'
 
