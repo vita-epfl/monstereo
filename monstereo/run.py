@@ -50,7 +50,7 @@ def cli():
                                 default='data/arrays/names-kitti-200615-1022.json')
     predict_parser.add_argument('--transform', help='transformation for the pose', default='None')
     predict_parser.add_argument('--draw_box', help='to draw box in the images', action='store_true')
-    predict_parser.add_argument('--z_max', type=int, help='maximum meters distance for predictions', default=22)
+    predict_parser.add_argument('--z_max', type=int, help='maximum meters distance for predictions', default=100)
     predict_parser.add_argument('--n_dropout', type=int, help='Epistemic uncertainty evaluation', default=0)
     predict_parser.add_argument('--dropout', type=float, help='dropout parameter', default=0.2)
     predict_parser.add_argument('--show_all', help='only predict ground-truth matches or all', action='store_true')
