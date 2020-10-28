@@ -24,7 +24,7 @@ class Printer:
     TEXTCOLOR = 'darkorange'
     COLOR_KPS = 'yellow'
 
-    def __init__(self, image, output_path, kk, output_types, epistemic=False, z_max=30, fig_width=10):
+    def __init__(self, image, output_path, kk, output_types, epistemic=False, z_max=30, fig_width=15):
 
         self.im = image
         self.kk = kk
@@ -43,7 +43,7 @@ class Printer:
 
         # Define variables of the class to change for every image
         self.mpl_im0 = self.stds_ale = self.stds_epi = self.xx_gt = self.zz_gt = self.xx_pred = self.zz_pred =\
-            self.dds_real = self.uv_centers = self.uv_shoulders = self.uv_kps = self.boxes = self.boxes_gt = \
+            self.dd_real = self.uv_centers = self.uv_shoulders = self.uv_kps = self.boxes = self.boxes_gt = \
             self.uv_camera = self.radius = self.auxs = None
 
     def _process_results(self, dic_ann):
@@ -59,8 +59,9 @@ class Printer:
                       for idx, xx in enumerate(dic_ann['xyz_real'])]
         self.zz_pred = [xx[2] if xx[2] < self.z_max - self.stds_epi[idx] else 0
                         for idx, xx in enumerate(dic_ann['xyz_pred'])]
-
-        self.dds_real = dic_ann['dds_real']
+        self.dd_pred = dic_ann['dds_pred']
+        self.dd_real = dic_ann['dds_real']
+        self.uv_heads = dic_ann['uv_heads']
         self.uv_shoulders = dic_ann['uv_shoulders']
         self.boxes = dic_ann['boxes']
         self.boxes_gt = dic_ann['boxes_gt']
@@ -117,14 +118,14 @@ class Printer:
         if any(xx in self.output_types for xx in ['front', 'combined']):
             ax0 = self.set_axes(ax0, axis=0)
 
-            divider = make_axes_locatable(ax0)
-            cax = divider.append_axes('right', size='3%', pad=0.05)
-            bar_ticks = self.z_max // 5 + 1
-            norm = matplotlib.colors.Normalize(vmin=0, vmax=self.z_max)
-            scalar_mappable = plt.cm.ScalarMappable(cmap=self.cmap, norm=norm)
-            scalar_mappable.set_array([])
-            plt.colorbar(scalar_mappable, ticks=np.linspace(0, self.z_max, bar_ticks),
-                         boundaries=np.arange(- 0.05, self.z_max + 0.1, .1), cax=cax, label='Z [m]')
+            # divider = make_axes_locatable(ax0)
+            # cax = divider.append_axes('right', size='3%', pad=0.05)
+            # bar_ticks = self.z_max // 5 + 1
+            # norm = matplotlib.colors.Normalize(vmin=0, vmax=self.z_max)
+            # scalar_mappable = plt.cm.ScalarMappable(cmap=self.cmap, norm=norm)
+            # scalar_mappable.set_array([])
+            # plt.colorbar(scalar_mappable, ticks=np.linspace(0, self.z_max, bar_ticks),
+            #              boundaries=np.arange(- 0.05, self.z_max + 0.1, .1), cax=cax, label='Z [m]')
 
             axes.append(ax0)
         if not axes:
@@ -158,15 +159,14 @@ class Printer:
         self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
-
-                color = self.cmap((self.zz_pred[idx] % self.z_max) / self.z_max)
-                self.draw_circle(axes, self.uv_shoulders[idx], color)
+                color = 'deepskyblue' if self.auxs[idx] > 0.5 else 'r'
+                self._draw_text(axes[0],
+                                self.uv_heads[idx][0],
+                                self.uv_heads[idx][1],
+                                self.dds_pred[idx],
+                                color=color)
                 if draw_box:
                     self.draw_boxes(axes, idx, color)
-
-                if draw_text:
-                    self.draw_text_front(axes, self.uv_shoulders[idx], num)
-                    num += 1
 
         # Draw the bird figure
         num = 0
@@ -181,51 +181,35 @@ class Printer:
                     self.draw_text_bird(axes, idx, num)
                     num += 1
         # Add the legend
-        if legend and any(xx in self.output_types for xx in ['bird', 'combined']):
-            draw_legend(axes)
+        if legend:
+            self._draw_legend(axes)
 
         # Draw, save or/and show the figures
         for idx, fig in enumerate(figures):
             fig.canvas.draw()
             if save:
-                fig.savefig(self.output_path + self.extensions[idx], bbox_inches='tight')
+                fig.savefig(self.output_path + self.extensions[idx], bbox_inches='tight', dpi=150)
             if show:
                 fig.show()
             plt.close(fig)
 
-    def _draw_text(self, ax, x, y, v, text, color):
+    @staticmethod
+    def _draw_text(ax, x, y, z, color):
+        """Adapted from https://github.com/vita-epfl/openpifpaf"""
 
-        coord_i = np.argsort(y[v > 0])
-        if np.sum(v) >= 2 and y[v > 0][coord_i[1]] < y[v > 0][coord_i[0]] + 10:
-            # second coordinate within 10 pixels
-            f0 = 0.5 + 0.5 * (y[v > 0][coord_i[1]] - y[v > 0][coord_i[0]]) / 10.0
-            coord_y = f0 * y[v > 0][coord_i[0]] + (1.0 - f0) * y[v > 0][coord_i[1]]
-            coord_x = f0 * x[v > 0][coord_i[0]] + (1.0 - f0) * x[v > 0][coord_i[1]]
-        else:
-            coord_y = y[v > 0][coord_i[0]]
-            coord_x = x[v > 0][coord_i[0]]
-
+        z_str = str(z).split(sep='.')
+        text = z_str[0] + '.' + z_str[1][0] + ' m'
         bbox_config = {'facecolor': color, 'alpha': 0.5, 'linewidth': 0}
         ax.annotate(
             text,
-            (coord_x, coord_y),
-            fontsize=8,
+            (x, y),
+            fontsize=12,
             xytext=(5.0, 5.0),
             textcoords='offset points',
-            color=cls.text_color,
+            color='white',
             bbox=bbox_config,
+            label='red'
         )
-        if subtext is not None:
-            ax.annotate(
-                subtext,
-                (coord_x, coord_y),
-                fontsize=5,
-                xytext=(5.0, 18.0 + 3.0),
-                textcoords='offset points',
-                color=cls.text_color,
-                bbox=bbox_config,
-            )
-
 
     def draw_uncertainty(self, axes, idx):
 
@@ -268,7 +252,7 @@ class Printer:
 
     def draw_ellipses(self, axes, idx):
         """draw uncertainty ellipses"""
-        target = get_task_error(self.dds_real[idx])
+        target = get_task_error(self.dd_real[idx])
         angle_gt = get_angle(self.xx_gt[idx], self.zz_gt[idx])
         ellipse_real = Ellipse((self.xx_gt[idx], self.zz_gt[idx]), width=target * 2, height=1,
                                angle=angle_gt, color='lightgreen', fill=True, label="Task error")
@@ -348,11 +332,18 @@ class Printer:
 
         return ax
 
-
-def draw_legend(axes):
-    handles, labels = axes[1].get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels, handles))
-    axes[1].legend(by_label.values(), by_label.keys(), loc='best')
+    def _draw_legend(self, axes):
+        # Bird eye view legend
+        if any(xx in self.output_types for xx in ['bird', 'combined']):
+            handles, labels = axes[1].get_legend_handles_labels()
+            by_label = OrderedDict(zip(labels, handles))
+            axes[1].legend(by_label.values(), by_label.keys(), loc='best')
+        else:
+            # Front eye view legend
+            handles, labels = axes[0].get_legend_handles_labels()
+            by_label = OrderedDict(zip(labels, handles))
+            print(by_label)
+            axes[0].legend(by_label.values(), by_label.keys(), loc='best')
 
 
 def get_angle(xx, zz):
