@@ -104,10 +104,11 @@ class PreprocessKitti:
                 category = 'all'
             else:  # Remove for original results
                 min_conf = 0.1
+                
                 if self.vehicles:
                     category = 'car'
                 else:
-                    category = 'pedestrian' 
+                    category = 'pedestrian'
 
             # Extract ground truth
             boxes_gt, ys, _, _ = parse_ground_truth(path_gt, category=category, spherical=True, vehicles=self.vehicles)
@@ -180,10 +181,11 @@ class PreprocessKitti:
                         keypoint = keypoints[idx:idx + 1]
                         lab = ys[idx_gt][:-1]
 
+                        #keypoint = clear_keypoints(keypoint)
                         # Preprocess MonoLoco++
                         if self.monocular:
                             inp = preprocess_monoloco(keypoint, kk).view(-1).tolist()
-                        
+                            #print("INP", inp)
                             lab = normalize_hwl(lab)
                             if ys[idx_gt][10] < 0.5:
                                 self.dic_jo[phase]['kps'].append(keypoint.tolist())
@@ -251,6 +253,8 @@ class PreprocessKitti:
 
                                 for i, lab in enumerate(labels_aug):
                                     (kps, kps_r) = kps_aug[i]
+                                    #kps = clear_keypoints(kps)
+                                    #kps_r = clear_keypoints(kps_r)
                                     input_l = preprocess_monoloco(kps, kk).view(-1)
                                     input_r = preprocess_monoloco(kps_r, kk).view(-1)
                                     keypoint = torch.cat((kps, kps_r), dim=2).tolist()
@@ -312,6 +316,7 @@ class PreprocessKitti:
 
         print("\nOutput files:\n{}\n{}".format(self.path_names, self.path_joints))
         print('-' * 120)
+        
 
     def prep_activity(self):
         """Augment ground-truth with flag activity"""
@@ -383,3 +388,17 @@ def crop_and_draw(im, box, keypoint):
     w_crop = crop.shape[1]
 
     return crop, h_crop, w_crop
+
+def clear_keypoints(keypoints):
+    #print("KEYPOINTS_BEFORE", keypoints)
+
+    new_keypoints = keypoints
+    for i, kps in enumerate(keypoints):
+        mean = keypoints[i, 0:2, (keypoints[i,2, :]>0) ].mean(dim = 1)
+        mean[mean != mean] = 0      # set Nan to 0
+        #mean =torch.ones(mean.size())*(12000)
+        if (keypoints[i,2, :]<=0).sum() != 0: # BE SURE THAT THE CONFIDENCE IS NOT EQUAL TO 0
+            new_keypoints[i, 0:2, (keypoints[i,2, :]<=0)] = torch.transpose(mean.repeat((keypoints[i,2, :]<=0).sum() , 1), 0, 1)
+
+    #print("KEYPOINTS_AFTER", keypoints)
+    return new_keypoints

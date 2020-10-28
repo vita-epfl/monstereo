@@ -125,10 +125,12 @@ class HypTuning:
         for key, value in dic_best.items():
             self.logger.info(" {}: {}".format(key, value))
 
-        print()
+        
         self.logger.info("Accuracy in each cluster:")
 
         for key in ('10', '20', '30', '>30', 'all'):
             self.logger.info("Val: error in cluster {} = {} ".format(key, dic_err_best['val'][key]['d']))
         self.logger.info("Final accuracy Val: {:.2f}".format(dic_best['acc_val']))
         self.logger.info("\nSaved the model: {}".format(self.path_model))
+        print(self.path_model)
+        print(dic_best['hidden_size'])

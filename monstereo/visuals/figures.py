@@ -10,13 +10,14 @@ from matplotlib.patches import Ellipse
 
 from ..utils import get_task_error, get_pixel_error
 
+DIR_OUT ='docs/eval'
 
 def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
     """
     Visualize error as function of the distance and compare it with target errors based on human height analyses
     """
 
-    dir_out = 'docs'
+    dir_out = DIR_OUT
     phase = 'test'
     x_min = 3
     x_max = 42
@@ -70,7 +71,7 @@ def show_spread(dic_stats, clusters, show=False, save=False):
     """Predicted confidence intervals and task error as a function of ground-truth distance"""
 
     phase = 'test'
-    dir_out = 'docs'
+    dir_out = DIR_OUT
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [clst for clst in clusters if clst not in excl_clusters]
     x_min = 3
@@ -113,7 +114,7 @@ def show_spread(dic_stats, clusters, show=False, save=False):
 def show_task_error(show, save):
     """Task error figure"""
     plt.figure(3)
-    dir_out = 'docs'
+    dir_out = DIR_OUT
     xx = np.linspace(0.1, 50, 100)
     mu_men = 178
     mu_women = 165
@@ -150,7 +151,7 @@ def show_task_error(show, save):
 
 def show_method(save):
     """ method figure"""
-    dir_out = 'docs'
+    dir_out = DIR_OUT
     std_1 = 0.75
     fig = plt.figure(1)
     ax = fig.add_subplot(1, 1, 1)
@@ -176,7 +177,7 @@ def show_method(save):
 
 def show_box_plot(dic_errors, clusters, show=False, save=False):
     import pandas as pd
-    dir_out = 'docs'
+    dir_out = DIR_OUT
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [int(clst) for clst in clusters if clst not in excl_clusters]
     methods = ('monstereo', 'pseudo-lidar', '3dop', 'monoloco')

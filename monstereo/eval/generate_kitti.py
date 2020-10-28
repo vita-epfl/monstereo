@@ -53,7 +53,7 @@ class GenerateKitti:
                 model_mono_pp = None#'data/models/ms-201022-1548-vehicles.pkl' # KITTI vehicle
             # model_mono_pp = 'data/models/stereoloco-200608-1550.pkl'  # nuScenes_pp
             self.monoloco_pp = Loco(model=model_mono_pp, net='monoloco_pp', device=device, n_dropout=n_dropout,
-                                    p_dropout=p_dropout, vehicles = vehicles)
+                                    p_dropout=p_dropout, vehicles = vehicles, linear_size=hidden_size)
 
         if 'monoloco' in self.METHODS:
             model_mono = 'data/models/monoloco-190717-0952.pkl'  # KITTI

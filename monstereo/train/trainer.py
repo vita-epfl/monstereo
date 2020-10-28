@@ -217,7 +217,7 @@ class Trainer:
         self.logger.info('Saved weights of the model at epoch: {}'.format(best_epoch))
 
         if self.print_loss:
-            print_losses(epoch_losses)
+            print_losses(epoch_losses, self.monocular)
 
         # load best model weights
         self.model.load_state_dict(best_model_wts)
@@ -299,7 +299,6 @@ class Trainer:
 
         errs = torch.abs(extract_outputs(outputs)['d'] - extract_labels(labels)['d'])
 
-        #! TO RESOLVE
         assert rel_frac > 0.99, "Variance of errors not supported with partial evaluation"
 
         # Uncertainty
@@ -447,15 +446,19 @@ def debug_plots(inputs, labels):
     plt.show()
 
 
-def print_losses(epoch_losses):
+def print_losses(epoch_losses, monocular = False):
+    if monocular: 
+        mode = "mono"
+    else:
+        mode= "stereo"
     for idx, phase in enumerate(epoch_losses):
         for idx_2, el in enumerate(epoch_losses['train']):
             plt.figure(idx + idx_2)
-            plt.title('{} loss for the parameter {}'.format(phase, el))
+            plt.title('{} loss for the parameter {} in {}'.format(phase, el, mode))
             plt.xlabel('Epochs')
             plt.ylabel('loss of {}'.format(el))
             plt.plot(epoch_losses[phase][el][10:], label='{} Loss: {}'.format(phase, el))
-            plt.savefig('figures/{}_loss_{}.png'.format(phase, el))
+            plt.savefig('figures/{}_loss_{}_{}.png'.format(phase, mode, el))
             plt.close()
 
 

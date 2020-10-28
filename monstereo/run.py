@@ -38,7 +38,7 @@ def cli():
     predict_parser.add_argument('--mode', help='pifpaf, mono, stereo', default='stereo')
     predict_parser.add_argument('images', nargs='*', help='input images')
     predict_parser.add_argument('--glob', help='glob expression for input images (for many images)')
-    predict_parser.add_argument('-o', '--output-directory', help='Output directory')
+    predict_parser.add_argument('-o', '--output-directory', help='Output directory', default='visual_tests/')
     predict_parser.add_argument('--output_types', nargs='+', default=['json'],
                                 help='what to output: json keypoints skeleton for Pifpaf'
                                      'json bird front combined for Monoloco')
@@ -101,7 +101,7 @@ def cli():
     eval_parser.add_argument('--geometric', help='to evaluate geometric distance', action='store_true')
     eval_parser.add_argument('--generate', help='create txt files for KITTI evaluation', action='store_true')
     eval_parser.add_argument('--dir_ann', help='directory of annotations of 2d joints (for KITTI evaluation)')
-    eval_parser.add_argument('--model', help='path of MonoLoco model to load')
+    eval_parser.add_argument('--model', help='path of MonoLoco model to load', default=None)
     eval_parser.add_argument('--joints', help='Json file with input joints to evaluate (for nuScenes evaluation)')
     eval_parser.add_argument('--n_dropout', type=int, help='Epistemic uncertainty evaluation', default=0)
     eval_parser.add_argument('--dropout', type=float, help='dropout. Default no dropout', default=0.2)
@@ -117,7 +117,7 @@ def cli():
     eval_parser.add_argument('--net', help='Choose network: monoloco, monoloco_p, monoloco_pp, monstereo')
     eval_parser.add_argument('--full_position', help='Change the output size of the network to train the network on the 3D position of the keypoints', action='store_true')
     eval_parser.add_argument('--vehicles', help="Indicate that we are training,evaluating or predicting vehicles position instead of human's one", action ='store_true')
-    eval_parser.add_argument('--model-mono', help='mono model that can be added to compute the score evaluation for monoloco_pp', default = None)
+    eval_parser.add_argument('--model_mono', help='mono model that can be added to compute the score evaluation for monoloco_pp', default = None)
     args = parser.parse_args()
     return args
 

@@ -74,14 +74,17 @@ def predict(args):
                         images_outputs = [image]  # List of 1 or 2 elements with pifpaf tensor and monoloco original image
                         pifpaf_outs = {'left': pifpaf_out}
                         image_path_l = image_path
-                        output_path = "."
+                        if args.output_directory is None:
+                            output_path = image_paths[0]
+                        else:
+                            file_name = os.path.basename(image_paths[0])
+                            output_path = os.path.join(args.output_directory, file_name)
 
                 else:
                     if img_id + "." +img_type+".predictions.json" in os.listdir(args.joints_folder+'_right'):
                         joints_path = os.path.join(args.joints_folder+'_right', img_id + "."+img_type+".predictions.json")
                         pifpaf_out = open_annotations(joints_path)
                         pifpaf_outs['right'] = pifpaf_out
-
             else:
                 if args.output_directory is None:
                     output_path = image_paths[0]

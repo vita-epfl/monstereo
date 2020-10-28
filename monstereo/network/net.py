@@ -54,9 +54,7 @@ class Loco:
                 if self.kps_3d:
                     output_size = 24
                 else:
-                    output_size = 9
-
-                
+                    output_size = 9       
         else:
             input_size = 34
             output_size = 2
@@ -231,7 +229,6 @@ class Loco:
             dic_out['uv_centers'].append(uv_center)
             dic_out['uv_shoulders'].append(uv_shoulder)
             dic_out['uv_heads'].append(uv_head)
-            dic_out['keypoints'].append(kps)
 
             # For MonStereo / MonoLoco++
             try:

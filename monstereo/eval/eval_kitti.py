@@ -22,10 +22,10 @@ class EvalKitti:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     CLUSTERS = ('easy', 'moderate', 'hard', 'all', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25',
-                '27', '29', '49')
+                '27', '29', '31', '49')
     ALP_THRESHOLDS = ('<0.5m', '<1m', '<2m')
-    OUR_METHODS = ['monoloco_pp', 'monstereo']#['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
-    METHODS_MONO = ['m3d', 'monopsr']
+    OUR_METHODS = ['monoloco_pp']#['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
+    METHODS_MONO = ['m3d']#, 'monopsr']
     METHODS_STEREO = []#['3dop', 'psf', 'pseudo-lidar', 'e2e', 'oc-stereo']
     BASELINES = []#['task_error', 'pixel_error']
     HEADERS = ('method', '<0.5', '<1m', '<2m', 'easy', 'moderate', 'hard', 'all')
@@ -58,7 +58,8 @@ class EvalKitti:
         self.dic_thresh_conf = {method: (thresh_conf_monoloco if method in self.OUR_METHODS
                                          else thresh_conf_base)
                                 for method in self.methods}
-        self.dic_thresh_conf['monopsr'] += 0.3
+        if 'monopsr' in self.methods:
+            self.dic_thresh_conf['monopsr'] += 0.3
         self.dic_thresh_conf['e2e-pl'] = -100  # They don't have enough detections
         self.dic_thresh_conf['oc-stereo'] = -100
 
@@ -204,7 +205,7 @@ class EvalKitti:
             zz_gt = ys[idx_gt][2]
             mode = get_difficulty(boxes_gt[idx_gt], truncs_gt[idx_gt], occs_gt[idx_gt])
 
-            if cat[idx].lower() in (self.category, 'pedestrian'):
+            if cat[idx].lower() in (self.category, 'pedestrian' if not self.vehicles else 'car'):
                 self.update_errors(dds[idx], dd_gt, mode, self.errors[method])
                 if method == 'monoloco':
                     dd_task_error = dd_gt + (get_task_error(zz_gt))**2
