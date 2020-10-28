@@ -138,8 +138,7 @@ Preprocessing and training step are already fully supported by the code provided
 but require first to run a pose detector over
 all the training images and collect the annotations. 
 The code supports this option (by running the predict script and using `--mode pifpaf`).
-Once the code will be made publicly available, we will add 
-links to download annotations.
+
 
 ### Datasets
 Download KITTI ground truth files and camera calibration matrices for training
