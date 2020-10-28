@@ -181,7 +181,7 @@ class Printer:
                     self.draw_text_bird(axes, idx, num)
                     num += 1
         # Add the legend
-        if legend:
+        if legend and any(xx in self.output_types for xx in ['bird', 'combined']):
             draw_legend(axes)
 
         # Draw, save or/and show the figures
@@ -192,6 +192,40 @@ class Printer:
             if show:
                 fig.show()
             plt.close(fig)
+
+    def _draw_text(self, ax, x, y, v, text, color):
+
+        coord_i = np.argsort(y[v > 0])
+        if np.sum(v) >= 2 and y[v > 0][coord_i[1]] < y[v > 0][coord_i[0]] + 10:
+            # second coordinate within 10 pixels
+            f0 = 0.5 + 0.5 * (y[v > 0][coord_i[1]] - y[v > 0][coord_i[0]]) / 10.0
+            coord_y = f0 * y[v > 0][coord_i[0]] + (1.0 - f0) * y[v > 0][coord_i[1]]
+            coord_x = f0 * x[v > 0][coord_i[0]] + (1.0 - f0) * x[v > 0][coord_i[1]]
+        else:
+            coord_y = y[v > 0][coord_i[0]]
+            coord_x = x[v > 0][coord_i[0]]
+
+        bbox_config = {'facecolor': color, 'alpha': 0.5, 'linewidth': 0}
+        ax.annotate(
+            text,
+            (coord_x, coord_y),
+            fontsize=8,
+            xytext=(5.0, 5.0),
+            textcoords='offset points',
+            color=cls.text_color,
+            bbox=bbox_config,
+        )
+        if subtext is not None:
+            ax.annotate(
+                subtext,
+                (coord_x, coord_y),
+                fontsize=5,
+                xytext=(5.0, 18.0 + 3.0),
+                textcoords='offset points',
+                color=cls.text_color,
+                bbox=bbox_config,
+            )
+
 
     def draw_uncertainty(self, axes, idx):
 
