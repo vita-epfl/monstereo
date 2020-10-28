@@ -82,15 +82,15 @@ def preprocess_monoloco(keypoints, kk, zero_center=False, kps_3d = False):
         keypoints = torch.tensor(keypoints)
     if isinstance(kk, list):
         kk = torch.tensor(kk)
+
+
+    keypoints = clear_keypoints(keypoints, nb_dim)
     # Projection in normalized image coordinates and zero-center with the center of the bounding box
     
     xy1_all = pixel_to_camera(keypoints[:, 0:nb_dim, :], kk, 10)
-    
-    if zero_center:
+    if zero_center:#
         uv_center = get_keypoints(keypoints, mode='center')
         xy1_center = pixel_to_camera(uv_center, kk, 10)
-       
-    
         kps_norm = xy1_all - xy1_center.unsqueeze(1)  # (m, 17, 3) - (m, 1, 3)
     else:
         kps_norm = xy1_all
@@ -98,6 +98,38 @@ def preprocess_monoloco(keypoints, kk, zero_center=False, kps_3d = False):
     #kps_out = torch.cat((kps_out, keypoints[:, nb_dim, :]), dim=1)
     return kps_out
 
+def clear_keypoints(keypoints, nb_dim = 2):
+    #print("KEYPOINTS_BEFORE", keypoints)
+    #new_keypoints = keypoints
+    for i, kps in enumerate(keypoints):
+
+        #ensure that the  values are stored in the GPU
+        mean = keypoints[i, 0:nb_dim, (keypoints[i,nb_dim, :]>0) ].mean(dim = 1).to(keypoints.device) 
+        mean[mean != mean] = 0      # set Nan to 0
+        mean =(torch.ones(mean.size())*(-10000))
+        if (keypoints[i,nb_dim, :]<=0).sum() != 0: # BE SURE THAT THE CONFIDENCE IS NOT EQUAL TO 0
+            keypoints[i, 0:nb_dim, (keypoints[i,nb_dim, :]<=0)] = torch.transpose(mean.repeat((keypoints[i,nb_dim, :]<=0).sum() , 1), 0, 1)
+
+
+        #? Try to generate a subset of "synthetic keypoints according to a normal distribution
+        """
+        std = keypoints[i, 0:nb_dim, (keypoints[i,nb_dim, :]>0) ].std(dim = 1).to(keypoints.device) 
+        std[std != std] = 0      # set Nan to 0
+    
+        if (keypoints[i,nb_dim, :]<=0).sum() != 0: # BE SURE THAT THE CONFIDENCE IS NOT EQUAL TO 0
+            #Generation of an array of sythetic keypoints
+
+            #print("BEFORE", keypoints[i, 0:nb_dim, :] )
+
+            for j in range(len(keypoints[i,nb_dim, :])):
+                #out_new = torch.normal(mean = mean, std = std).unsqueeze(0) 
+                #out_prev= torch.cat([out_prev, out_new], dim = 0)
+                if keypoints[i,nb_dim, j]<=0:
+                    keypoints[i, 0:nb_dim, j] = torch.normal(mean = mean, std = std)
+
+            #print("AFTER", keypoints[i, 0:nb_dim, :] )
+        """
+    return keypoints
 
 def factory_for_gt(im_size, name=None, path_gt=None, verbose=True):
     """Look for ground-truth annotations file and define calibration matrix based on image size """
