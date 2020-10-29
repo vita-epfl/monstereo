@@ -176,6 +176,7 @@ class KeypointPainter(object):
         if color is None and colors is None:
             colors = range(len(keypoint_sets))
 
+        print(keypoint_sets)
         for i, kps in enumerate(np.asarray(keypoint_sets)):
             assert kps.shape[1] == 3
             x = kps[:, 0] * self.xy_scale

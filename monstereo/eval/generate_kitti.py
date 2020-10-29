@@ -121,7 +121,7 @@ class GenerateKitti:
 
             #!bookmark
             min_conf = 0.1
-            #min_conf = 0.35*min_conf
+            min_conf = 0.35*min_conf
             boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=min_conf)
             cat = get_category(keypoints, os.path.join(self.dir_byc, basename + '.json'))
             
@@ -256,7 +256,7 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
 
             # Set the scale to obtain (approximately) same recall at evaluation¨
             #!bookmark
-            n = 1.0
+            n = 2.5
             if mode == 'monstereo':
                 conf_scale = 0.03
                 conf_scale = n*conf_scale

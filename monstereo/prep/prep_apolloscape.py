@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import os
 import sys
 import time
@@ -20,22 +14,6 @@ from ..utils import append_cluster, correct_angle, normalize_hwl, pixel_to_camer
 from ..network.process import preprocess_monoloco
 
 from ..utils import K, KPS_MAPPING,car_name2id, car_id2name, intrinsic_vec_to_mat, intrinsic_mat_to_vec, euler_angles_to_rotation_matrix,                                 rotation_matrix_to_euler_angles, convert_pose_mat_to_6dof, project, pose_extraction
-
-
-
-#dataset = "train"
-
-#annotations = False
-
-#kps_3d = False
-#buffer = 20
-#radius = 200
-#dir_ann ="/data/maxime-data/apollo-pifpaf/annotations/"
-#dir_apollo ="/data/maxime-data/apolloscape"
-#dir_out = "/home/maximebonnesoeur/monstereo/data/arrays/"
-
-
-# In[6]:
 
 
 def bbox_3d_extract(vertices):
@@ -96,7 +74,6 @@ def keypoints_to_cad_model(keypoints, vertices_cad_dic, radius = 160):
     
     for i, vertices_2d in vertices_cad_dic.items():
         
-        
         for j, keypoint in enumerate(keypoints):
             
             res = np.ones([len(vertices_2d),2])*keypoint[1:] - np.transpose([vertices_2d[:,0]/vertices_2d[:,2], vertices_2d[:,1]/vertices_2d[:,2]])
@@ -119,12 +96,16 @@ def keypoints_to_cad_model(keypoints, vertices_cad_dic, radius = 160):
     
     return keypoints_to_cad, index[np.argmax(counts)], np.max(counts)
 
-def keypoint_expander(vertices_2d, keypoints, buffer = 100) :
+def keypoint_expander(vertices_2d, keypoints, buffer = 100, kps_3d = True) :
     #process the existing keypoints and assign them a depth by minimizing the 
     #distance with the vertices of the projected CAD models.
+
     new_keypoints =[]
     if len(keypoints.shape) == 1:
         keypoints = [keypoints]
+
+    if kps_3d == False:
+        return np.array(keypoints)
         
     for keypoint in keypoints:
         if len(keypoint)<2:
@@ -210,44 +191,7 @@ def car_projection( car_model, scale , T, turn_over = False, bbox= False):
 
 
 
-def preprocess_monoloco_old(keypoints, kk, zero_center=False, kps_3d = False):
 
-    """ Preprocess batches of inputs
-    keypoints = torch tensors of (m, 3, 24)/(m,4,24)  or list [3,24]/[4,24]
-    Outputs =  torch tensors of (m, 48)/(m,72) in meters normalized (z=1) and zero-centered using the center of the box
-    
-    or, if we have the confidences:
-     Outputs =  torch tensors of (m, 72)/(m,96) in meters normalized (z=1) and zero-centered using the center of the box
-    """
-    if kps_3d:
-        nb_dim = 3
-    else: 
-        nb_dim = 2
-    
-    if isinstance(keypoints, list):
-        keypoints = torch.tensor(keypoints).double()
-    if isinstance(kk, list):
-        kk = torch.tensor(kk).double()
-    # Projection in normalized image coordinates and zero-center with the center of the bounding box
-    
-    xy1_all = pixel_to_camera(keypoints[:, 0:nb_dim, :], kk, 10)
-    
-    if zero_center:
-        uv_center = get_keypoints(keypoints, mode='center')
-        xy1_center = pixel_to_camera(uv_center, kk, 10)
-       
-    
-        kps_norm = xy1_all - xy1_center.unsqueeze(1)  # (m, 17, 3) - (m, 1, 3)
-    else:
-        kps_norm = xy1_all
-    kps_out = kps_norm[:, :, 0:nb_dim].reshape(kps_norm.size()[0], -1)  # no contiguous for view
-    #kps_out = torch.cat((kps_out, keypoints[:, nb_dim, :]), dim=1)
-    return kps_out
-
-
-# ## PIFPAF
-
-# In[10]:
 
 
 def pifpaf_info_extractor(json_pifpaf):
@@ -466,7 +410,6 @@ class PreprocessApolloscape:
             #Compute the similarity between each set of car models in the 3D space and the set of keypoints from in the 2D space
             for index_keypoints, keypoints in enumerate(keypoints_pifpaf):
 
-
                 dic_keypoints[index_keypoints] = keypoints
 
                 k_t_c, index_cad, count = keypoints_to_cad_model(keypoints, dic_vertices, radius = self.radius)
@@ -482,7 +425,7 @@ class PreprocessApolloscape:
 
                     keypoints = dic_keypoints[index_keypoints]
                     vertices_2d = dic_vertices[index_cad]
-                    new_keypoints = keypoint_expander(vertices_2d, keypoints, self.buffer)
+                    new_keypoints = keypoint_expander(vertices_2d, keypoints, self.buffer ,self.kps_3d)
 
                     if self.kps_3d :
                         keypoints_list.append( new_keypoints[:,[1,2,3,0]])
@@ -511,7 +454,6 @@ class PreprocessApolloscape:
                         ys_list.append([xc, yc, zc, np.linalg.norm([xc, yc, zc]), h, w, l, sin, cos, yaw])
                     
             return boxes_gt_list, boxes_3d_list, keypoints_list, ys_list
-        
         
         
         else:
@@ -566,7 +508,7 @@ class PreprocessApolloscape:
             # Run IoU with pifpaf detections and save
             path_pif = os.path.join(self.dir_ann, scene_id+".jpg" + '.predictions.json')
                         
-            if os.path.isfile(path_pif) and False:
+            if os.path.isfile(path_pif) and True:
                 boxes_gt_list, boxes_3d_list, kps_list, ys_list  = self.extract_ground_truth_pifpaf(car_poses,camera_id, scene_id, path_pif)
             else:
                 boxes_gt_list, boxes_3d_list, kps_list, ys_list = self.extract_ground_truth(car_poses,camera_id, scene_id)
@@ -579,14 +521,11 @@ class PreprocessApolloscape:
             
             for kps, ys, boxes_gt, boxes_3d in zip(kps_list, ys_list, boxes_gt_list, boxes_3d_list):
                 
-                
                 kps = [kps.transpose().tolist()]
                 #kk = list(intrinsic_vec_to_mat(kk).transpose())
                 
                 self.dic_jo[phase]['kps'].append(kps)
-                
                 inp = preprocess_monoloco(kps,  intrinsic_vec_to_mat(kk).tolist(), kps_3d = self.kps_3d).view(-1).tolist()
-                #inp = preprocess_monoloco(kps,  intrinsic_mat_to_vec(intrinsic_vec_to_mat(kk).transpose()).tolist(), kps_3d = self.kps_3d).view(-1).tolist()
                 
                 #print("inp 2.0 \n", inp)
                 self.dic_jo[phase]['X'].append(inp)
@@ -607,17 +546,10 @@ class PreprocessApolloscape:
 
         extract_box_average(self.dic_jo['train']['boxes_3d'])
         print("\nSaved {} annotations for {} scenes. Total time: {:.1f} minutes".format(cnt_ann, cnt_scenes, (end-start)/60))
-        print("\nOutput files:\n{}\n{}\n".format(self.path_names, self.path_joints))       
-                           
+        print("\nOutput files:\n{}\n{}\n".format(self.path_names, self.path_joints))    
+                            
 
             
-                    
-      
-
-
-# In[14]:
-
-
 def factory(dataset, dir_apollo):
     """Define dataset type and split training and validation"""
 
@@ -644,26 +576,5 @@ def factory(dataset, dir_apollo):
     scenes = [os.path.join(path_img, file) for file in os.listdir(path_img) if file.endswith(".jpg")]
     
     return scenes, train_scenes, validation_scenes
-
-
-
-#prep = PreprocessApolloscape(dir_ann, dir_apollo, dir_out, dataset, kps_3d = kps_3d, buffer = buffer, radius = radius)
-
-
-
-# 
-# Files with the first preprocess monoloco including the confidence for the keypoints:
-# 
-# inp = preprocess_monoloco(kps,  intrinsic_vec_to_mat(kk).transpose().tolist(), kps_3d = self.kps_3d).view(-1).tolist()
-#     
-# Output files:
-# /home/maximebonnesoeur/monstereo/data/arrays/names-train-201018-1910.json
-# /home/maximebonnesoeur/monstereo/data/arrays/joints-train-201018-1910.json
-
-# _____
-
-# In[ ]:
-
-
 
 

@@ -164,6 +164,11 @@ class EvalKitti:
                         cat.append('Pedestrian'if not self.vehicles else 'Car')
                     else:
                         line = line_str.split()
+                        check_wesh = check_conditions(line,
+                                            category='pedestrian' if not self.vehicles else 'car',
+                                            method=method,
+                                            thresh=self.dic_thresh_conf[method])
+
                         if check_conditions(line,
                                             category='pedestrian' if not self.vehicles else 'car',
                                             method=method,

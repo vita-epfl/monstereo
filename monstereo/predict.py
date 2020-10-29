@@ -5,7 +5,7 @@ import os
 import json
 from collections import defaultdict
 
-
+import numpy as np
 import torch
 from PIL import Image
 
@@ -144,6 +144,12 @@ def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=N
     if args.mode == 'pifpaf':
         keypoint_sets, scores, pifpaf_out = pifpaf_outputs[:]
 
+
+        if not args.joints_folder is None:
+            keypoint_sets = []
+            for pifpaf_o in pifpaf_out:
+                keypoint_sets.append(np.reshape(pifpaf_o['keypoints'], (3,-1)))
+
         CAR_SKELETON = [[1, 17], [1, 2], [1, 3], [2, 4], [2, 7], [3, 4], [3, 5], 
             [4, 6], [5, 6], [6, 8], [8, 9], [7, 10], [9, 10], [10, 13], [18, 14],
             [23, 7], [23, 8], [23, 9], [8, 4], [23, 4], [23, 2], [11, 12], [11, 13], 
@@ -177,7 +183,7 @@ def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=N
                               show=args.show,
                               fig_width=args.figure_width,
                               dpi_factor=args.dpi_factor) as ax:
-                skeleton_painter.keypoints(ax, pifpaf_out, scores=scores)
+                skeleton_painter.keypoints(ax, keypoint_sets, scores=scores)
 
     else:
         if any((xx in args.output_types for xx in ['front', 'bird', 'combined', 'combined_pifpaf'])):
