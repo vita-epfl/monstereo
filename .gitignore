@@ -14,3 +14,4 @@ figures/
 visual_tests/
 docs/
 *.ipynb
+*.out
