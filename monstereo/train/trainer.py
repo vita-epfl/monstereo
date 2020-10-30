@@ -23,7 +23,7 @@ from torch.optim import lr_scheduler
 from .datasets import KeypointsDataset
 from .losses import CompositeLoss, MultiTaskLoss, AutoTuneMultiTaskLoss
 from ..network import extract_outputs, extract_labels
-from ..network.architectures import SimpleModel
+from ..network.architectures import MonStereoModel
 from ..utils import set_logger
 
 
