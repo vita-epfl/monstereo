@@ -11,12 +11,11 @@ from matplotlib.patches import Ellipse
 from ..utils import get_task_error, get_pixel_error
 
 
-def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
+def show_results(dic_stats, clusters, dir_out='data/figures', show=False, save=False, stereo=True):
     """
     Visualize error as function of the distance and compare it with target errors based on human height analyses
     """
 
-    dir_out = 'docs'
     phase = 'test'
     x_min = 3
     x_max = 42
@@ -27,7 +26,7 @@ def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
     xx = np.linspace(x_min, x_max, 100)
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [clst for clst in clusters if clst not in excl_clusters]
-    plt.figure(0)
+    plt.figure(0, figsize=(9.6, 7.2))
     styles = printing_styles(stereo)
     for idx_style, style in enumerate(styles.items()):
         plt.figure(idx_style)
@@ -59,18 +58,17 @@ def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
         plt.tight_layout()
         mode = 'stereo' if stereo else 'mono'
         path_fig = os.path.join(dir_out, 'results_' + mode + '.png')
-        plt.savefig(path_fig)
+        plt.savefig(path_fig, dpi=250)
         print("Figure of results " + mode + " saved in {}".format(path_fig))
     if show:
         plt.show()
     plt.close('all')
 
 
-def show_spread(dic_stats, clusters, show=False, save=False):
+def show_spread(dic_stats, clusters, dir_out='data/figures', show=False, save=False):
     """Predicted confidence intervals and task error as a function of ground-truth distance"""
 
     phase = 'test'
-    dir_out = 'docs'
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [clst for clst in clusters if clst not in excl_clusters]
     x_min = 3
@@ -78,7 +76,7 @@ def show_spread(dic_stats, clusters, show=False, save=False):
     y_min = 0
 
     for method in ('monoloco_pp', 'monstereo'):
-        plt.figure(2)
+        plt.figure(2, figsize=(9.6, 7.2))
         xxs = get_distances(clusters)
         bbs = np.array([dic_stats[phase][method][key]['std_ale'] for key in clusters[:-1]])
         if method == 'monoloco_pp':
@@ -103,17 +101,16 @@ def show_spread(dic_stats, clusters, show=False, save=False):
         if save:
             plt.tight_layout()
             path_fig = os.path.join(dir_out, 'spread_' + method + '.png')
-            plt.savefig(path_fig)
+            plt.savefig(path_fig, dpi=250)
             print("Figure of confidence intervals saved in {}".format(path_fig))
         if show:
             plt.show()
         plt.close('all')
 
 
-def show_task_error(show, save):
+def show_task_error(show, save, dir_out='data/figures'):
     """Task error figure"""
-    plt.figure(3)
-    dir_out = 'docs'
+    plt.figure(3, figsize=(9.6, 7.2))
     xx = np.linspace(0.1, 50, 100)
     mu_men = 178
     mu_women = 165
@@ -141,16 +138,15 @@ def show_task_error(show, save):
     plt.legend(loc=(0.01, 0.55))  # Location from 0 to 1 from lower left
     if save:
         path_fig = os.path.join(dir_out, 'task_error.png')
-        plt.savefig(path_fig)
+        plt.savefig(path_fig, dpi=200)
         print("Figure of task error saved in {}".format(path_fig))
     if show:
         plt.show()
     plt.close('all')
 
 
-def show_method(save):
+def show_method(save, dir_out='data/figures'):
     """ method figure"""
-    dir_out = 'docs'
     std_1 = 0.75
     fig = plt.figure(1)
     ax = fig.add_subplot(1, 1, 1)
@@ -170,13 +166,12 @@ def show_method(save):
     plt.ylabel('Z [m]')
     if save:
         path_fig = os.path.join(dir_out, 'output_method.png')
-        plt.savefig(path_fig)
+        plt.savefig(path_fig, dpi=200)
         print("Figure of method saved in {}".format(path_fig))
 
 
-def show_box_plot(dic_errors, clusters, show=False, save=False):
+def show_box_plot(dic_errors, clusters, dir_out='data/figures', show=False, save=False):
     import pandas as pd
-    dir_out = 'docs'
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [int(clst) for clst in clusters if clst not in excl_clusters]
     methods = ('monstereo', 'pseudo-lidar', '3dop', 'monoloco')
@@ -188,7 +183,7 @@ def show_box_plot(dic_errors, clusters, show=False, save=False):
         df = pd.DataFrame([dic_errors[method][str(clst)] for clst in clusters[:-1]]).T
         df.columns = labels
 
-        plt.figure(idx)
+        plt.figure(idx, figsize=(9.6, 7.2))  # with 200 dpi it becomes 1920x1440
         _ = df.boxplot()
         name = 'MonStereo' if method == 'monstereo' else method
         plt.title(name)
@@ -199,7 +194,7 @@ def show_box_plot(dic_errors, clusters, show=False, save=False):
         if save:
             path_fig = os.path.join(dir_out, 'box_plot_' + name + '.png')
             plt.tight_layout()
-            plt.savefig(path_fig)
+            plt.savefig(path_fig, dpi=200)
             print("Figure of box plot saved in {}".format(path_fig))
         if show:
             plt.show()

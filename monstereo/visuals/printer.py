@@ -19,10 +19,13 @@ class Printer:
     """
     Print results on images: birds eye view and computed distance
     """
-    FONTSIZE_BV = 16
-    FONTSIZE = 18
-    TEXTCOLOR = 'darkorange'
-    COLOR_KPS = 'yellow'
+    DPI = 200
+    FONTSIZE_D = 14
+    FONTSIZE_BV = 20
+    FONTSIZE_NUM = 14
+    LINEWIDTH = 8
+    MARKERSIZE = 12
+    NUMCOLOR = 'darkorange'
 
     def __init__(self, image, output_path, kk, output_types, epistemic=False, z_max=30, fig_width=15):
 
@@ -42,7 +45,7 @@ class Printer:
         self.extensions = []
 
         # Define variables of the class to change for every image
-        self.mpl_im0 = self.stds_ale = self.stds_epi = self.xx_gt = self.zz_gt = self.xx_pred = self.zz_pred =\
+        self.mpl_im0 = self.stds_ale = self.stds_epi = self.xx_gt = self.zz_gt = self.xx_pred = self.zz_pred = \
             self.dd_real = self.uv_centers = self.uv_shoulders = self.uv_kps = self.boxes = self.boxes_gt = \
             self.uv_camera = self.radius = self.auxs = None
 
@@ -92,7 +95,7 @@ class Printer:
             # Distinguish between KITTI images and general images
             fig_ar_1 = 0.8
             width_ratio = 1.9
-            self.extensions.append('.combined.png')
+            self.extensions.append('.multi.png')
 
             fig, (ax0, ax1) = plt.subplots(1, 2, sharey=False, gridspec_kw={'width_ratios': [width_ratio, 1]},
                                            figsize=(fig_width, fig_height))
@@ -116,7 +119,7 @@ class Printer:
 
         # Create front figure axis
         if any(xx in self.output_types for xx in ['front', 'combined']):
-            ax0 = self.set_axes(ax0, axis=0)
+            ax0 = self._set_axes(ax0, axis=0)
 
             # divider = make_axes_locatable(ax0)
             # cax = divider.append_axes('right', size='3%', pad=0.05)
@@ -138,11 +141,11 @@ class Printer:
             fig1.set_tight_layout(True)
             figures.append(fig1)
         if any(xx in self.output_types for xx in ['bird', 'combined']):
-            ax1 = self.set_axes(ax1, axis=1)  # Adding field of view
+            ax1 = self._set_axes(ax1, axis=1)  # Adding field of view
             axes.append(ax1)
         return figures, axes
 
-    def draw(self, figures, axes, dic_out, image, show_all=False, draw_text=True, legend=True, draw_box=False,
+    def draw(self, figures, axes, dic_out, image, show_all=False, video=False, legend=True,
              save=False, show=False):
 
         # Process the annotation dictionary of monoloco
@@ -151,35 +154,36 @@ class Printer:
         # whether to include instances that don't match the ground-truth
         iterator = range(len(self.zz_pred)) if show_all else range(len(self.zz_gt))
         if not iterator:
-            print("-"*110 + '\n' + "! No instances detected, be sure to include file with ground-truth values or "
-                  "use the command --show_all" + '\n' + "-"*110)
+            print("-" * 110 + '\n' + "! No instances detected, be sure to include file with ground-truth values or "
+                                     "use the command --show_all" + '\n' + "-" * 110)
 
         # Draw the front figure
-        num = 0
+        number = dict(flag=~video, num=97)  # character a
         self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
                 color = 'deepskyblue' if self.auxs[idx] > 0.3 else 'r'
-                self._draw_text(axes[0],
-                                self.uv_heads[idx][0],
-                                self.uv_heads[idx][1],
-                                self.dd_pred[idx],
-                                color=color)
-                if draw_box:
-                    self.draw_boxes(axes, idx, color)
+
+                self._draw_front(axes[0],
+                                 self.dd_pred[idx],
+                                 idx,
+                                 color,
+                                 number)
+
+                number['num'] += 1
 
         # Draw the bird figure
-        num = 0
+        number['num'] = 97
         for idx in iterator:
             if any(xx in self.output_types for xx in ['bird', 'combined']) and self.zz_pred[idx] > 0:
 
                 # Draw ground truth and uncertainty
-                self.draw_uncertainty(axes, idx)
+                self._draw_uncertainty(axes, idx)
 
                 # Draw bird eye view text
-                if draw_text:
-                    self.draw_text_bird(axes, idx, num)
-                    num += 1
+                if number['flag']:
+                    self._draw_text_bird(axes, idx, number['num'])
+                    number['num'] += 1
         # Add the legend
         if legend:
             self._draw_legend(axes)
@@ -188,30 +192,61 @@ class Printer:
         for idx, fig in enumerate(figures):
             fig.canvas.draw()
             if save:
-                fig.savefig(self.output_path + self.extensions[idx], bbox_inches='tight', dpi=150)
+                fig.savefig(self.output_path + self.extensions[idx], bbox_inches='tight', dpi=self.DPI)
             if show:
                 fig.show()
             plt.close(fig)
 
-    @staticmethod
-    def _draw_text(ax, x, y, z, color):
-        """Adapted from https://github.com/vita-epfl/openpifpaf"""
+    def _draw_front(self, ax, z, idx, color, number):
 
+        w = self.boxes[idx][2] - self.boxes[idx][0]
+        h = (self.boxes[idx][3] - self.boxes[idx][1]) * self.y_scale
+        w_gt = self.boxes_gt[idx][2] - self.boxes_gt[idx][0]
+        h_gt = (self.boxes_gt[idx][3] - self.boxes_gt[idx][1]) * self.y_scale
+        x0 = self.boxes[idx][0]
+        y0 = self.boxes[idx][1] * self.y_scale
+        y1 = y0 + h
+        rectangle = Rectangle((x0, y0),
+                              width=w,
+                              height=h,
+                              fill=False,
+                              color=color,
+                              linewidth=1)
+        # rectangle_gt = Rectangle((self.boxes_gt[idx][0], self.boxes_gt[idx][1] * self.y_scale),
+        #                          width=ww_box_gt, height=hh_box_gt, fill=False, color='g', linewidth=1)
+        # axes[0].add_patch(rectangle_gt)
+        ax.add_patch(rectangle)
         z_str = str(z).split(sep='.')
         text = z_str[0] + '.' + z_str[1][0]
         bbox_config = {'facecolor': color, 'alpha': 0.6, 'linewidth': 0}
         ax.annotate(
             text,
-            (x, y),
-            fontsize=11,
+            (x0-1.5, y1+24),
+            fontsize=self.FONTSIZE_D,
+            weight='bold',
             xytext=(5.0, 5.0),
             textcoords='offset points',
             color='white',
             bbox=bbox_config,
             label='red'
         )
+        if number['flag']:
+            ax.text(x0-10, y1+14, chr(number['num']),
+                    fontsize=self.FONTSIZE_NUM, color=self.NUMCOLOR)
 
-    def draw_uncertainty(self, axes, idx):
+    def _draw_text_bird(self, axes, idx, num):
+        """Plot the number in the bird eye view map"""
+
+        std = self.stds_epi[idx] if self.stds_epi[idx] > 0 else self.stds_ale[idx]
+        theta = math.atan2(self.zz_pred[idx], self.xx_pred[idx])
+
+        delta_x = std * math.cos(theta)
+        delta_z = std * math.sin(theta)
+
+        axes[1].text(self.xx_pred[idx] + delta_x, self.zz_pred[idx] + delta_z,
+                     chr(num), fontsize=self.FONTSIZE_BV, color='darkorange')
+
+    def _draw_uncertainty(self, axes, idx):
 
         theta = math.atan2(self.zz_pred[idx], self.xx_pred[idx])
         dic_std = {'ale': self.stds_ale[idx], 'epi': self.stds_epi[idx]}
@@ -226,89 +261,84 @@ class Printer:
 
         # MonoLoco
         if not self.auxs:
-            axes[1].plot(dic_x['epi'], dic_y['epi'], color='coral', linewidth=2, label="Epistemic Uncertainty")
-            axes[1].plot(dic_x['ale'], dic_y['ale'], color='deepskyblue', linewidth=4, label="Aleatoric Uncertainty")
-            axes[1].plot(self.xx_pred[idx], self.zz_pred[idx], color='cornflowerblue', label="Prediction", markersize=6,
+            axes[1].plot(dic_x['epi'],
+                         dic_y['epi'],
+                         color='coral',
+                         linewidth=round(self.LINEWIDTH/2),
+                         label="Epistemic Uncertainty")
+
+            axes[1].plot(dic_x['ale'],
+                         dic_y['ale'],
+                         color='deepskyblue',
+                         linewidth=self.LINEWIDTH,
+                         label="Aleatoric Uncertainty")
+
+            axes[1].plot(self.xx_pred[idx],
+                         self.zz_pred[idx],
+                         color='cornflowerblue',
+                         label="Prediction",
+                         markersize=self.MARKERSIZE,
                          marker='o')
+
             if self.gt[idx]:
-                axes[1].plot(self.xx_gt[idx], self.zz_gt[idx],
-                             color='k', label="Ground-truth", markersize=8, marker='x')
+                axes[1].plot(self.xx_gt[idx],
+                             self.zz_gt[idx],
+                             color='k',
+                             label="Ground-truth",
+                             markersize=8,
+                             marker='x')
 
         # MonStereo(stereo case)
         elif self.auxs[idx] > 0.5:
-            axes[1].plot(dic_x['ale'], dic_y['ale'], color='r', linewidth=4, label="Prediction (mono)")
-            axes[1].plot(dic_x['ale'], dic_y['ale'], color='deepskyblue', linewidth=4, label="Prediction (stereo+mono)")
+            axes[1].plot(dic_x['ale'],
+                         dic_y['ale'],
+                         color='r',
+                         linewidth=self.LINEWIDTH,
+                         label="Prediction (mono)")
+
+            axes[1].plot(dic_x['ale'],
+                         dic_y['ale'],
+                         color='deepskyblue',
+                         linewidth=self.LINEWIDTH,
+                         label="Prediction (stereo+mono)")
+
             if self.gt[idx]:
-                axes[1].plot(self.xx_gt[idx], self.zz_gt[idx],
-                             color='k', label="Ground-truth", markersize=8, marker='x')
+                axes[1].plot(self.xx_gt[idx],
+                             self.zz_gt[idx],
+                             color='k',
+                             label="Ground-truth",
+                             markersize=self.MARKERSIZE,
+                             marker='x')
 
         # MonStereo (monocular case)
         else:
-            axes[1].plot(dic_x['ale'], dic_y['ale'], color='deepskyblue', linewidth=4, label="Prediction (stereo+mono)")
-            axes[1].plot(dic_x['ale'], dic_y['ale'], color='r', linewidth=4, label="Prediction (mono)")
+            axes[1].plot(dic_x['ale'],
+                         dic_y['ale'],
+                         color='deepskyblue',
+                         linewidth=self.LINEWIDTH,
+                         label="Prediction (stereo+mono)")
+
+            axes[1].plot(dic_x['ale'],
+                         dic_y['ale'],
+                         color='r',
+                         linewidth=self.LINEWIDTH,
+                         label="Prediction (mono)")
             if self.gt[idx]:
-                axes[1].plot(self.xx_gt[idx], self.zz_gt[idx],
-                             color='k', label="Ground-truth", markersize=8, marker='x')
+                axes[1].plot(self.xx_gt[idx],
+                             self.zz_gt[idx],
+                             color='k',
+                             label="Ground-truth",
+                             markersize=self.MARKERSIZE,
+                             marker='x')
 
-    def draw_ellipses(self, axes, idx):
-        """draw uncertainty ellipses"""
-        target = get_task_error(self.dd_real[idx])
-        angle_gt = get_angle(self.xx_gt[idx], self.zz_gt[idx])
-        ellipse_real = Ellipse((self.xx_gt[idx], self.zz_gt[idx]), width=target * 2, height=1,
-                               angle=angle_gt, color='lightgreen', fill=True, label="Task error")
-        axes[1].add_patch(ellipse_real)
-        if abs(self.zz_gt[idx] - self.zz_pred[idx]) > 0.001:
-            axes[1].plot(self.xx_gt[idx], self.zz_gt[idx], 'kx', label="Ground truth", markersize=3)
+    def _draw_legend(self, axes):
+        # Bird eye view legend
+        if any(xx in self.output_types for xx in ['bird', 'combined']):
+            handles, labels = axes[1].get_legend_handles_labels()
+            by_label = OrderedDict(zip(labels, handles))
+            axes[1].legend(by_label.values(), by_label.keys(), loc='best')
 
-        angle = get_angle(self.xx_pred[idx], self.zz_pred[idx])
-        ellipse_ale = Ellipse((self.xx_pred[idx], self.zz_pred[idx]), width=self.stds_ale[idx] * 2,
-                              height=1, angle=angle, color='b', fill=False, label="Aleatoric Uncertainty",
-                              linewidth=1.3)
-        ellipse_var = Ellipse((self.xx_pred[idx], self.zz_pred[idx]), width=self.stds_epi[idx] * 2,
-                              height=1, angle=angle, color='r', fill=False, label="Uncertainty",
-                              linewidth=1, linestyle='--')
-
-        axes[1].add_patch(ellipse_ale)
-        if self.epistemic:
-            axes[1].add_patch(ellipse_var)
-
-        axes[1].plot(self.xx_pred[idx], self.zz_pred[idx], 'ro', label="Predicted", markersize=3)
-
-    def draw_boxes(self, axes, idx, color):
-        ww_box = self.boxes[idx][2] - self.boxes[idx][0]
-        hh_box = (self.boxes[idx][3] - self.boxes[idx][1]) * self.y_scale
-        ww_box_gt = self.boxes_gt[idx][2] - self.boxes_gt[idx][0]
-        hh_box_gt = (self.boxes_gt[idx][3] - self.boxes_gt[idx][1]) * self.y_scale
-
-        rectangle = Rectangle((self.boxes[idx][0], self.boxes[idx][1] * self.y_scale),
-                              width=ww_box, height=hh_box, fill=False, color=color, linewidth=3)
-        rectangle_gt = Rectangle((self.boxes_gt[idx][0], self.boxes_gt[idx][1] * self.y_scale),
-                                 width=ww_box_gt, height=hh_box_gt, fill=False, color='g', linewidth=2)
-        axes[0].add_patch(rectangle_gt)
-        axes[0].add_patch(rectangle)
-
-    def draw_text_front(self, axes, uv, num):
-        axes[0].text(uv[0] + self.radius, uv[1] * self.y_scale - self.radius, str(num),
-                     fontsize=self.FONTSIZE, color=self.TEXTCOLOR, weight='bold')
-
-    def draw_text_bird(self, axes, idx, num):
-        """Plot the number in the bird eye view map"""
-
-        std = self.stds_epi[idx] if self.stds_epi[idx] > 0 else self.stds_ale[idx]
-        theta = math.atan2(self.zz_pred[idx], self.xx_pred[idx])
-
-        delta_x = std * math.cos(theta)
-        delta_z = std * math.sin(theta)
-
-        axes[1].text(self.xx_pred[idx] + delta_x, self.zz_pred[idx] + delta_z,
-                     str(num), fontsize=self.FONTSIZE_BV, color='darkorange')
-
-    def draw_circle(self, axes, uv, color):
-
-        circle = Circle((uv[0], uv[1] * self.y_scale), radius=self.radius, color=color, fill=True)
-        axes[0].add_patch(circle)
-
-    def set_axes(self, ax, axis):
+    def _set_axes(self, ax, axis):
         assert axis in (0, 1)
 
         if axis == 0:
@@ -326,19 +356,39 @@ class Printer:
             corr = round(float(x_max / 3))
             ax.plot([0, x_max], [0, self.z_max], 'k--')
             ax.plot([0, -x_max], [0, self.z_max], 'k--')
-            ax.set_xlim(-x_max+corr, x_max-corr)
-            ax.set_ylim(0, self.z_max+1)
+            ax.set_xlim(-x_max + corr, x_max - corr)
+            ax.set_ylim(0, self.z_max + 1)
             ax.set_xlabel("X [m]")
-
         return ax
 
-    def _draw_legend(self, axes):
-        # Bird eye view legend
-        if any(xx in self.output_types for xx in ['bird', 'combined']):
-            handles, labels = axes[1].get_legend_handles_labels()
-            by_label = OrderedDict(zip(labels, handles))
-            axes[1].legend(by_label.values(), by_label.keys(), loc='best')
+    # def _draw_ellipses(self, axes, idx):
+    #     """draw uncertainty ellipses"""
+    #     target = get_task_error(self.dd_real[idx])
+    #     angle_gt = get_angle(self.xx_gt[idx], self.zz_gt[idx])
+    #     ellipse_real = Ellipse((self.xx_gt[idx], self.zz_gt[idx]), width=target * 2, height=1,
+    #                            angle=angle_gt, color='lightgreen', fill=True, label="Task error")
+    #     axes[1].add_patch(ellipse_real)
+    #     if abs(self.zz_gt[idx] - self.zz_pred[idx]) > 0.001:
+    #         axes[1].plot(self.xx_gt[idx], self.zz_gt[idx], 'kx', label="Ground truth", markersize=3)
+    #
+    #     angle = get_angle(self.xx_pred[idx], self.zz_pred[idx])
+    #     ellipse_ale = Ellipse((self.xx_pred[idx], self.zz_pred[idx]), width=self.stds_ale[idx] * 2,
+    #                           height=1, angle=angle, color='b', fill=False, label="Aleatoric Uncertainty",
+    #                           linewidth=1.3)
+    #     ellipse_var = Ellipse((self.xx_pred[idx], self.zz_pred[idx]), width=self.stds_epi[idx] * 2,
+    #                           height=1, angle=angle, color='r', fill=False, label="Uncertainty",
+    #                           linewidth=1, linestyle='--')
+    #
+    #     axes[1].add_patch(ellipse_ale)
+    #     if self.epistemic:
+    #         axes[1].add_patch(ellipse_var)
+    #
+    #     axes[1].plot(self.xx_pred[idx], self.zz_pred[idx], 'ro', label="Predicted", markersize=3)
 
+    # def draw_circle(self, axes, uv, color):
+    #
+    #     circle = Circle((uv[0], uv[1] * self.y_scale), radius=self.radius, color=color, fill=True)
+    #     axes[0].add_patch(circle)
 
 def get_angle(xx, zz):
     """Obtain the points to plot the confidence of each annotation"""
