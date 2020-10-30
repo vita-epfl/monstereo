@@ -122,8 +122,8 @@ class Trainer:
         self.logger.info('Sizes of the dataset: {}'.format(self.dataset_sizes))
         print(">>> creating model")
 
-        self.model = SimpleModel(input_size=input_size, output_size=output_size, linear_size=hidden_size,
-                                 p_dropout=dropout, num_stage=self.n_stage, device=self.device)
+        self.model = MonStereoModel(input_size=input_size, output_size=output_size, linear_size=hidden_size,
+                                    p_dropout=dropout, num_stage=self.n_stage, device=self.device)
         self.model.to(self.device)
         print(">>> model params: {:.3f}M".format(sum(p.numel() for p in self.model.parameters()) / 1000000.0))
         print(">>> loss params: {}".format(sum(p.numel() for p in self.mt_loss.parameters())))
