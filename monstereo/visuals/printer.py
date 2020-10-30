@@ -23,6 +23,7 @@ class Printer:
     FONTSIZE_D = 14
     FONTSIZE_BV = 24
     FONTSIZE_NUM = 22
+    FONTSIZE_AX = 15
     LINEWIDTH = 8
     MARKERSIZE = 16
     ATTRIBUTES = dict(stereo={'color': 'deepskyblue',
@@ -367,6 +368,8 @@ class Printer:
             ax.set_xlim(-x_max + corr, x_max - corr)
             ax.set_ylim(0, self.z_max + 1)
             ax.set_xlabel("X [m]")
+            plt.xticks(fontsize=self.FONTSIZE_AX)
+            plt.yticks(fontsize=self.FONTSIZE_AX)
         return ax
 
     # def _draw_ellipses(self, axes, idx):
