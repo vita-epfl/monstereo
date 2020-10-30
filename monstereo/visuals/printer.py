@@ -21,11 +21,16 @@ class Printer:
     """
     DPI = 200
     FONTSIZE_D = 14
-    FONTSIZE_BV = 20
-    FONTSIZE_NUM = 14
+    FONTSIZE_BV = 24
+    FONTSIZE_NUM = 22
     LINEWIDTH = 8
-    MARKERSIZE = 12
-    NUMCOLOR = 'darkorange'
+    MARKERSIZE = 16
+    ATTRIBUTES = dict(stereo={'color': 'deepskyblue',
+                              'numcolor': 'darkorange',
+                              'linewidth': 1},
+                      mono={'color': 'red',
+                            'numcolor': 'firebrick',
+                            'linewidth': 2},)
 
     def __init__(self, image, output_path, kk, output_types, epistemic=False, z_max=30, fig_width=15):
 
@@ -162,14 +167,10 @@ class Printer:
         self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
-                color = 'deepskyblue' if self.auxs[idx] > 0.3 else 'r'
-
                 self._draw_front(axes[0],
                                  self.dd_pred[idx],
                                  idx,
-                                 color,
                                  number)
-
                 number['num'] += 1
 
         # Draw the bird figure
@@ -197,8 +198,11 @@ class Printer:
                 fig.show()
             plt.close(fig)
 
-    def _draw_front(self, ax, z, idx, color, number):
+    def _draw_front(self, ax, z, idx, number):
 
+        mode = 'stereo' if self.auxs[idx] > 0.3 else 'mono'
+
+        #Bbox
         w = self.boxes[idx][2] - self.boxes[idx][0]
         h = (self.boxes[idx][3] - self.boxes[idx][1]) * self.y_scale
         w_gt = self.boxes_gt[idx][2] - self.boxes_gt[idx][0]
@@ -210,15 +214,15 @@ class Printer:
                               width=w,
                               height=h,
                               fill=False,
-                              color=color,
-                              linewidth=1)
+                              color=self.ATTRIBUTES[mode]['color'],
+                              linewidth=self.ATTRIBUTES[mode]['linewidth'])
         # rectangle_gt = Rectangle((self.boxes_gt[idx][0], self.boxes_gt[idx][1] * self.y_scale),
         #                          width=ww_box_gt, height=hh_box_gt, fill=False, color='g', linewidth=1)
         # axes[0].add_patch(rectangle_gt)
         ax.add_patch(rectangle)
         z_str = str(z).split(sep='.')
         text = z_str[0] + '.' + z_str[1][0]
-        bbox_config = {'facecolor': color, 'alpha': 0.6, 'linewidth': 0}
+        bbox_config = {'facecolor': self.ATTRIBUTES[mode]['color'], 'alpha': 0.4, 'linewidth': 0}
         ax.annotate(
             text,
             (x0-1.5, y1+24),
@@ -228,23 +232,27 @@ class Printer:
             textcoords='offset points',
             color='white',
             bbox=bbox_config,
-            label='red'
         )
         if number['flag']:
-            ax.text(x0-10, y1+14, chr(number['num']),
-                    fontsize=self.FONTSIZE_NUM, color=self.NUMCOLOR)
+            ax.text(x0 - 17,
+                    y1 + 14,
+                    chr(number['num']),
+                    fontsize=self.FONTSIZE_NUM,
+                    color=self.ATTRIBUTES[mode]['numcolor'],
+                    weight='bold')
 
     def _draw_text_bird(self, axes, idx, num):
         """Plot the number in the bird eye view map"""
-
+        mode = 'stereo' if self.auxs[idx] > 0.3 else 'mono'
         std = self.stds_epi[idx] if self.stds_epi[idx] > 0 else self.stds_ale[idx]
         theta = math.atan2(self.zz_pred[idx], self.xx_pred[idx])
 
         delta_x = std * math.cos(theta)
         delta_z = std * math.sin(theta)
 
-        axes[1].text(self.xx_pred[idx] + delta_x, self.zz_pred[idx] + delta_z,
-                     chr(num), fontsize=self.FONTSIZE_BV, color='darkorange')
+        axes[1].text(self.xx_pred[idx] + delta_x + 0.2, self.zz_pred[idx] + delta_z + 0/2, chr(num),
+                     fontsize=self.FONTSIZE_BV,
+                     color=self.ATTRIBUTES[mode]['numcolor'])
 
     def _draw_uncertainty(self, axes, idx):
 
@@ -336,7 +344,7 @@ class Printer:
         if any(xx in self.output_types for xx in ['bird', 'combined']):
             handles, labels = axes[1].get_legend_handles_labels()
             by_label = OrderedDict(zip(labels, handles))
-            axes[1].legend(by_label.values(), by_label.keys(), loc='best')
+            axes[1].legend(by_label.values(), by_label.keys(), loc='best', prop={'size': 15})
 
     def _set_axes(self, ax, axis):
         assert axis in (0, 1)
