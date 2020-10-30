@@ -97,7 +97,7 @@ class Trainer:
 
         now = datetime.datetime.now()
         now_time = now.strftime("%Y%m%d-%H%M")[2:]
-        name_out = 'ms-' + now_time
+        name_out = 'monstereo-' + now_time
         if self.save:
             self.path_model = os.path.join(dir_out, name_out + '.pkl')
             self.logger = set_logger(os.path.join(dir_logs, name_out))
