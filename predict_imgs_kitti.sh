@@ -1,5 +1,5 @@
-input="/home/maximebonnesoeur/monstereo/splits/kitti_train.txt"
-input="/home/maximebonnesoeur/monstereo/splits/kitti_val.txt"
+input="splits/kitti_train.txt"
+input="splits/kitti_val.txt"
 
 mode='mono'
 

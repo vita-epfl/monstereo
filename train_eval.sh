@@ -1,7 +1,7 @@
 #!/bin/bash
 cuda_device_to_use='0'
 
-use_car='1'
+use_car='0'
 
 hyp='0'
 
@@ -18,11 +18,11 @@ hidden_size='1024'
 joints_there='0'
 
 
-joints_stereo='/home/maximebonnesoeur/monstereo/data/arrays/joints-kitti-stereo-201021-1518.json'
-joints_mono='/home/maximebonnesoeur/monstereo/data/arrays/joints-kitti-201023-1410.json' 
+joints_stereo='data/arrays/joints-kitti-stereo-201021-1518.json'
+joints_mono='data/arrays/joints-kitti-201023-1410.json' 
 dir_ann='/data/maxime-data/outputs_openpifpaf_kitti/annotations'
 
-joints_stereo_car='/home/maximebonnesoeur/monstereo/data/arrays/joints-kitti-vehicles-stereo-201022-1536.json'
+joints_stereo_car='data/arrays/joints-kitti-vehicles-stereo-201022-1536.json'
 joints_mono_car='data/arrays/joints-kitti-vehicles-201028-1054.json' 
 
 dir_ann_car='/data/maxime-data/outputs_openpifpaf_kitti/annotations_car'
@@ -30,8 +30,8 @@ dataset='kitti'
 
 #Test apolloscape
 
-dataset='apolloscape'
-dir_ann_car='/data/maxime-data/apollo-pifpaf/annotations/'
+#dataset='apolloscape'
+#dir_ann_car='/data/maxime-data/apollo-pifpaf/annotations/'
 #joints_mono_car='/home/maximebonnesoeur/monstereo/data/arrays/joints-apolloscape-train-201028-2236.json'
 
 echo "GPU USED ${cuda_device_to_use}"

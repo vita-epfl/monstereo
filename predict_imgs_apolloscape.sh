@@ -1,5 +1,5 @@
-input="/home/maximebonnesoeur/monstereo/data/apolloscape/train/split/train-list.txt"
-input="/home/maximebonnesoeur/monstereo/data/apolloscape/train/split/train-list.txt"
+input="data/apolloscape/train/split/train-list.txt"
+input="data/apolloscape/train/split/train-list.txt"
 
 mode='mono'
 
