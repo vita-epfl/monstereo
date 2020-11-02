@@ -55,8 +55,8 @@ class PreprocessKitti:
         self.monocular = monocular
         #self.dir_gt = os.path.join('data', 'kitti', 'gt')
         self.dir_gt = os.path.join('data', 'kitti', 'training', "label_2")
-        self.dir_images = '/data/maxime-data/kitti/training/image_2'
-        self.dir_byc_l = '/data/maxime-data/kitti/object_detection/left'
+        self.dir_images = 'data/kitti/training/image_2'
+        self.dir_byc_l = 'data/kitti/object_detection/left'
         self.names_gt = tuple(os.listdir(self.dir_gt))
         self.dir_kk = os.path.join('data', 'kitti', 'training', 'calib')
         self.list_gt = glob.glob(self.dir_gt + '/*.txt')

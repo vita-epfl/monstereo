@@ -56,6 +56,7 @@ def append_cluster(dic_jo, phase, xx, ys, kps):
                 dic_jo[phase]['clst'][clst]['X'].append(xx)
                 dic_jo[phase]['clst'][clst]['Y'].append(ys)
                 break
+            
         except ValueError:
             dic_jo[phase]['clst'][clst]['kps'].append(kps)
             dic_jo[phase]['clst'][clst]['X'].append(xx)
