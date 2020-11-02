@@ -38,6 +38,7 @@ def cli():
                                      'json bird front combined for Monoloco')
     predict_parser.add_argument('--no_save', help='to show images', action='store_true')
     predict_parser.add_argument('--show', help='to show images', action='store_true')
+    predict_parser.add_argument('--dpi', help='image resolution',  type=int, default=100)
 
     # Pifpaf
     nets.cli(predict_parser)
@@ -117,7 +118,6 @@ def main():
         predict(args)
 
     elif args.command == 'prep':
-
         if 'nuscenes' in args.dataset:
             from .prep.preprocess_nu import PreprocessNuscenes
             prep = PreprocessNuscenes(args.dir_ann, args.dir_nuscenes, args.dataset, args.iou_min)
