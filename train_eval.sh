@@ -1,11 +1,13 @@
 #!/bin/bash
-cuda_device_to_use='1'
+cuda_device_to_use='0'
 
-use_car='0'
+use_car='1'
 
 hyp='0'
 
 multipler='2'
+
+eval_mode='--save --verbose'
 
 stereo='0'
 
@@ -28,9 +30,11 @@ dataset='kitti'
 
 #Test apolloscape
 
-#dataset='apolloscape'
-#dir_ann_car='/data/maxime-data/apollo-pifpaf/annotations/'
+dataset='apolloscape'
+dir_ann_car='/data/maxime-data/apollo-pifpaf/annotations/'
 #joints_mono_car='/home/maximebonnesoeur/monstereo/data/arrays/joints-apolloscape-train-201028-2236.json'
+
+echo "GPU USED ${cuda_device_to_use}"
 
 model_out () {
     while read -r line; do
@@ -64,130 +68,144 @@ joints_out () {
 
 
 if [ $use_car == "1" ]
-then 
+    then 
 
-echo "CAR MODE"
+    echo "CAR MODE"
 
-if [ $joints_there == "0" ]
-then
+    if [ $joints_there == "0" ]
+    then
 
-echo "Command joints mono processing"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --monocular --vehicles --dataset ${dataset}"
+        echo "Command joints mono processing"
+        echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --monocular --vehicles --dataset ${dataset}"
 
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --monocular --vehicles --dataset ${dataset})
-joints_out "$output"
-joints_mono_car="$joints"
-fi
-echo "Output joint file mono"
-echo "$joints_mono_car"
+        output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --monocular --vehicles --dataset ${dataset})
+        joints_out "$output"
+        joints_mono_car="$joints"
+    fi
+    echo "Output joint file mono"
+    echo "$joints_mono_car"
 
 
 
-echo "Command training mono"
-if [ $hyp == "1" ]
-then 
-echo "Hyper pyrameter optimization enabled with multiplier of ${multipler}"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler}"
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler})
+    echo "Command training mono"
+    if [ $hyp == "1" ]
+    then 
+        echo "Hyper pyrameter optimization enabled with multiplier of ${multipler}"
+        echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler}"
+        output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler})
+    else
+        echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs}  --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save"
+        output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save)
+    fi
+    model_out "$output"
+    model_mono="$model"
+    echo "Output mono car model"
+    echo "$model_mono"
+    echo "$hidden_size"
+
+
+
+
+    if [ $stereo == "1" ]
+    then 
+
+        if [ $joints_there == "0" ]
+        then
+
+            echo "Command joints stereo processing"
+            echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --vehicles --dataset ${dataset}"
+
+            output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --vehicles --dataset ${dataset})
+            joints_out "$output"
+            joints_stereo_car="$joints"
+        fi
+        echo "Output joint file stereo"
+        echo "$joints_mono_car"
+
+
+
+        echo "Command training stereo"
+        if [ $hyp == "1" ]
+        then
+            echo "Hyper pyrameter optimization enabled with multiplier of ${multipler}"
+            echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs}  --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler}"
+            output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs}  --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler})
+        else
+            echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save"
+            output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs}  --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save)
+        fi
+
+        model_out "$output"
+        model_stereo="$model"
+
+        echo "output stereo car model"
+        echo "$model_stereo"
+    else
+        model_stereo="nope"
+    fi
+
+    if [ $dataset == "kitti" ]
+    then
+        echo "Generate and evaluate the output"
+        echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann_car} --model ${model_stereo} --model_mono ${model_mono} --hidden_size ${hidden_size} --vehicles --generate ${eval_mode}"
+        CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann_car} --model ${model_stereo} --model_mono ${model_mono} --hidden_size ${hidden_size} --vehicles --generate ${eval_mode}
+    fi
+
 else
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save"
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_mono_car} --hidden_size ${hidden_size} --monocular --vehicles --dataset ${dataset} --save)
-fi
-model_out "$output"
-model_mono="$model"
-echo "Output mono car model"
-echo "$model_mono"
-echo "$hidden_size"
+
+    echo "HUMAN MODE"
 
 
+    if [ $joints_there == "0" ]
+    then
+
+        echo "Command joints mono processing"
+        echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --monocular --dataset ${dataset}"
+
+        output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --monocular --dataset ${dataset})
+        joints_out "$output"
+        joints_mono="$joints"
+    fi
+    echo "Output joint file mono"
+    echo "$joints_mono"
 
 
-if [ $stereo == "1" ]
-then 
+    # train mono model
+    echo "Train mono "
+    output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset ${dataset} --joints ${joints_mono} --hidden_size ${hidden_size} --monocular --dataset kitti --save)
+    model_out "$output"
 
-if [ $joints_there == "0" ]
-then
+    model_mono="$model"
 
-echo "Command joints stereo processing"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --vehicles --dataset ${dataset}"
-
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann_car} --vehicles --dataset ${dataset})
-joints_out "$output"
-joints_stereo_car="$joints"
-fi
-echo "Output joint file stereo"
-echo "$joints_mono_car"
+    echo "$model_mono"
 
 
+    if [ $stereo == "1" ]
+    then 
 
-echo "Command training stereo"
-if [ $hyp == "1" ]
-then
-echo "Hyper pyrameter optimization enabled with multiplier of ${multipler}"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler}"
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save --hyp --multiplier ${multipler})
-else
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save"
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset kitti --joints ${joints_stereo_car} --hidden_size ${hidden_size} --vehicles --dataset ${dataset} --save)
-fi
+        if [ $joints_there == "0" ]
+        then
+            echo "Command joints stereo processing"
+            echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --dataset ${dataset}"
 
-model_out "$output"
-model_stereo="$model"hyp_mul_2
-
-echo "output stereo car model"
-echo "$model_stereo"
-else
-model_stereo="nope"
-fi
-
-if [ $dataset == "kitti" ]
-then
-echo "Generate and evaluate the output"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann_car} --model ${model_stereo} --model_mono ${model_mono} --hidden_size ${hidden_size} --vehicles --generate --verbose"
-CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann_car} --model ${model_stereo} --model_mono ${model_mono} --hidden_size ${hidden_size} --vehicles --generate --verbose
-fi
-
-else
-
-echo "HUMAN MODE"
+            output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --dataset ${dataset})
+            joints_out "$output"
+            joints_stereo="$joints"
+        fi
+        echo "Output joint file mono"
+        echo "$joints_stereo"
 
 
-if [ $joints_there == "0" ]
-then
+        echo "Train stereo"
+        output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset ${dataset} --joints ${joints_stereo} --hidden_size ${hidden_size} --dataset kitti --save)
+        model_out "$output"
+        model_stereo="$model"
+    else
+        model_stereo="nope"
+    fi
 
-echo "Command joints mono processing"
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --monocular --dataset ${dataset}"
+    echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann} --model ${model_stereo}  --model_mono ${model_mono} --generate ${eval_mode}"
 
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run prep --dir_ann ${dir_ann} --monocular --dataset ${dataset})
-joints_out "$output"
-joints_mono="$joints"
-fi
-echo "Output joint file mono"
-echo "$joints_mono"
-
-
-# train mono model
-echo "Command joints processing"
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset ${dataset} --joints ${joints_mono} --hidden_size ${hidden_size} --monocular --dataset kitti --save)
-model_out "$output"
-
-model_mono="$model"
-
-echo "$model_mono"
-
-
-if [ $stereo == "1" ]
-then 
-output=$(CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m  monstereo.run train --epochs ${epochs} --dataset ${dataset} --joints ${joints_stereo} --hidden_size ${hidden_size} --dataset kitti --save)
-model_out "$output"
-
-model_stereo="$model"
-else
-model_stereo="nope"
-fi
-
-echo "CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann} --model ${model_stereo}  --model_mono ${model_mono} --generate --verbose"
-
-CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann} --model ${model_stereo}  --model_mono ${model_mono} --generate --verbose
+    CUDA_VISIBLE_DEVICES=${cuda_device_to_use} python3 -m monstereo.run eval --dir_ann ${dir_ann} --model ${model_stereo}  --model_mono ${model_mono} --generate ${eval_mode}
 
 fi
