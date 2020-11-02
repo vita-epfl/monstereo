@@ -30,7 +30,7 @@ def predict(args):
       
     if 'stereo' in args.mode:
         monstereo = Loco(model=args.model, net='monstereo',
-                         device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout, vehicles = args.vehicles, kps_2d=args.full_position)
+                         device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout, vehicles = args.vehicles, kps_3d=args.full_position)
 
     # data
     data = ImageList(args.images, scale=args.scale)
@@ -113,15 +113,15 @@ def predict(args):
             im_name = os.path.basename(image_path_l)
             im_size = (float(image.size()[1] / args.scale), float(image.size()[0] / args.scale))  # Original
             kk, dic_gt = factory_for_gt(im_size, name=im_name, path_gt=args.path_gt)
-
+            #print("dic_gt", dic_gt)
             # Preprocess pifpaf outputs and run monoloco
             boxes, keypoints = preprocess_pifpaf(pifpaf_outs['left'], im_size, enlarge_boxes=False)
-
+            #print("KEYPOINTS",keypoints)
             if args.mode == 'mono':
                 print("Prediction with MonoLoco++")
                 dic_out = monoloco.forward(keypoints, kk)
                 dic_out = monoloco.post_process(dic_out, boxes, keypoints, kk, dic_gt)
-
+                #print("RESULTS", dic_out)
             else:
                 print("Prediction with MonStereo")
                 boxes_r, keypoints_r = preprocess_pifpaf(pifpaf_outs['right'], im_size)
@@ -186,22 +186,18 @@ def factory_outputs(args, images_outputs, output_path, pifpaf_outputs, dic_out=N
                 skeleton_painter.keypoints(ax, keypoint_sets, scores=scores)
 
     else:
-        if any((xx in args.output_types for xx in ['front', 'bird', 'combined', 'combined_pifpaf'])):
-            
-
+        if any((xx in args.output_types for xx in ['front', 'bird', 'combined', 'combined_3d'])):
             
             epistemic = False
             if args.n_dropout > 0:
                 epistemic = True
-
-            
 
             if dic_out['boxes']:  # Only print in case of detections
                 printer = Printer(images_outputs[1], output_path, kk, output_types=args.output_types
                                   , z_max=args.z_max, epistemic=epistemic)
                 figures, axes = printer.factory_axes()
                 printer.draw(figures, axes, dic_out, images_outputs[1], show_all=args.show_all, draw_box=args.draw_box,
-                             save=True, show=args.show)
+                             save=True, show=args.show, kps = pifpaf_outputs)
 
         if 'json' in args.output_types:
             with open(os.path.join(output_path + '.monoloco.json'), 'w') as ff:

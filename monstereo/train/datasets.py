@@ -55,14 +55,24 @@ class KeypointsDataset(Dataset):
         with open(joints, 'r') as f:
             dic_jo = json.load(f)
 
+        
         # Define input and output for normal training and inference
         self.inputs_all = torch.tensor(dic_jo[phase]['X'])
+        """print(len(self.inputs_all))
+        print(len(self.inputs_all[0]))
+        print(self.inputs_all[0][0])"""
         self.outputs_all = torch.tensor(dic_jo[phase]['Y'])
+        """print(len(self.outputs_all))
+        print(len(self.outputs_all[0]))
+        print(self.outputs_all[0][0])"""
         self.names_all = dic_jo[phase]['names']
         self.kps_all = torch.tensor(dic_jo[phase]['kps'])
-
         # Extract annotations divided in clusters
         self.dic_clst = dic_jo[phase]['clst']
+        """print(self.dic_clst.keys())
+        print(self.dic_clst[list(self.dic_clst.keys())[0]].keys())
+        print(phase)"""
+        #print(self.dic_clst['10']['kps'][0])
 
     def __len__(self):
         """

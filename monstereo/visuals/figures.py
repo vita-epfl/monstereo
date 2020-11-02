@@ -12,19 +12,26 @@ from ..utils import get_task_error, get_pixel_error
 
 DIR_OUT ='docs/eval'
 
-def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
+def show_results(dic_stats, our_methods, clusters, show=False, save=False, stereo=True, vehicles=False):
     """
     Visualize error as function of the distance and compare it with target errors based on human height analyses
     """
 
     dir_out = DIR_OUT
+    if vehicles:
+        dir_out+="_car"
     phase = 'test'
     x_min = 3
-    x_max = 42
+    if vehicles:
+        x_max = 70
+    else:
+        x_max = 42
     y_min = 0
     # y_max = 2.2
-    y_max = 3.5 if stereo else 5.2
-
+    if vehicles:
+        y_max = 12 if stereo else 5.2
+    else:
+        y_max = 5.2 if stereo else 5.2
     xx = np.linspace(x_min, x_max, 100)
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [clst for clst in clusters if clst not in excl_clusters]
@@ -38,17 +45,18 @@ def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
         plt.xlabel("Ground-truth distance [m]")
         plt.ylabel("Average localization error (ALE) [m]")
         for idx, method in enumerate(styles['methods']):
-            errs = [dic_stats[phase][method][clst]['mean'] for clst in clusters[:-1]]  # last cluster only a bound
-            cnts = [dic_stats[phase][method][clst]['cnt'] for clst in clusters[:-1]]  # last cluster only a bound
-            assert errs, "method %s empty" % method
-            xxs = get_distances(clusters)
+            if method in our_methods:
+                errs = [dic_stats[phase][method][clst]['mean'] for clst in clusters[:-1]]  # last cluster only a bound
+                cnts = [dic_stats[phase][method][clst]['cnt'] for clst in clusters[:-1]]  # last cluster only a bound
+                assert errs, "method %s empty" % method
+                xxs = get_distances(clusters)
 
-            plt.plot(xxs, errs, marker=styles['mks'][idx], markersize=styles['mksizes'][idx],
-                     linewidth=styles['lws'][idx],
-                     label=styles['labels'][idx], linestyle=styles['lstyles'][idx], color=styles['colors'][idx])
-            if method in ('monstereo', 'pseudo-lidar'):
-                for i, x in enumerate(xxs):
-                    plt.text(x, errs[i], str(cnts[i]), fontsize=10)
+                plt.plot(xxs, errs, marker=styles['mks'][idx], markersize=styles['mksizes'][idx],
+                        linewidth=styles['lws'][idx],
+                        label=styles['labels'][idx], linestyle=styles['lstyles'][idx], color=styles['colors'][idx])
+                if method in ('monstereo', 'pseudo-lidar'):
+                    for i, x in enumerate(xxs):
+                        plt.text(x, errs[i], str(cnts[i]), fontsize=10)
     if not stereo:
         plt.plot(xx, get_task_error(xx), '--', label="Task error", color='lightgreen', linewidth=2.5)
     # if stereo:
@@ -67,11 +75,13 @@ def show_results(dic_stats, clusters, show=False, save=False, stereo=True):
     plt.close('all')
 
 
-def show_spread(dic_stats, clusters, show=False, save=False):
+def show_spread(dic_stats, clusters, show=False, save=False, vehicles = False):
     """Predicted confidence intervals and task error as a function of ground-truth distance"""
 
     phase = 'test'
     dir_out = DIR_OUT
+    if vehicles:
+        dir_out+="_car"    
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [clst for clst in clusters if clst not in excl_clusters]
     x_min = 3
@@ -111,10 +121,12 @@ def show_spread(dic_stats, clusters, show=False, save=False):
         plt.close('all')
 
 
-def show_task_error(show, save):
+def show_task_error(show, save, vehicles = False):
     """Task error figure"""
     plt.figure(3)
     dir_out = DIR_OUT
+    if vehicles:
+        dir_out+="_car"
     xx = np.linspace(0.1, 50, 100)
     mu_men = 178
     mu_women = 165
@@ -149,9 +161,11 @@ def show_task_error(show, save):
     plt.close('all')
 
 
-def show_method(save):
+def show_method(save, vehicles = False):
     """ method figure"""
     dir_out = DIR_OUT
+    if vehicles:
+        dir_out+="_car"
     std_1 = 0.75
     fig = plt.figure(1)
     ax = fig.add_subplot(1, 1, 1)
@@ -175,12 +189,14 @@ def show_method(save):
         print("Figure of method saved in {}".format(path_fig))
 
 
-def show_box_plot(dic_errors, clusters, show=False, save=False):
+def show_box_plot(dic_errors, clusters, show=False, save=False, vehicles = False):
     import pandas as pd
     dir_out = DIR_OUT
+    if vehicles:
+        dir_out+="_car"
     excl_clusters = ['all', 'easy', 'moderate', 'hard']
     clusters = [int(clst) for clst in clusters if clst not in excl_clusters]
-    methods = ('monstereo', 'pseudo-lidar', '3dop', 'monoloco')
+    methods = ('monstereo', 'pseudo-lidar', '3dop', 'monoloco_pp', 'monoloco', 'm3d')
     y_min = 0
     y_max = 25  # 18 for the other
     xxs = get_distances(clusters)
@@ -295,12 +311,12 @@ def get_percentile(dist_gmm):
 
 def printing_styles(stereo):
     if stereo:
-        style = {"labels": ['3DOP', 'PSF', 'MonoLoco', 'MonoPSR', 'Pseudo-Lidar', 'Our MonStereo'],
-                 "methods": ['3dop', 'psf', 'monoloco', 'monopsr', 'pseudo-lidar', 'monstereo'],
-                 "mks": ['s', 'p', 'o', 'v', '*', '^'],
-                 "mksizes": [6, 6, 6, 6, 6, 6], "lws": [1.2, 1.2, 1.2, 1.2, 1.3, 1.5],
-                 "colors": ['gold', 'skyblue', 'darkgreen', 'pink', 'darkorange', 'b'],
-                 "lstyles": ['solid', 'solid', 'dashed', 'dashed', 'solid', 'solid']}
+        style = {"labels": ['3DOP', 'Task_error', 'Monoloco++', 'MonoPSR', 'Pseudo-Lidar', 'MonStereo', 'Mono3D'],
+                 "methods": ['3dop', 'task_error', 'monoloco_pp', 'monopsr', 'pseudo-lidar', 'monstereo', 'm3d'],
+                 "mks": ['s', 'p', 'o', 'v', '*', '^', '.'],
+                 "mksizes": [6, 6, 6, 6, 6, 6, 6], "lws": [1.2, 1.2, 1.2, 1.2, 1.3, 1.5, 1.3],
+                 "colors": ['gold', 'skyblue', 'darkgreen', 'pink', 'darkorange', 'b', 'olive'],
+                 "lstyles": ['solid', 'solid', 'dashed', 'dashed', 'solid', 'solid', 'solid']}
     else:
         style = {"labels": ['Mono3D', 'Geometric Baseline', 'MonoPSR', '3DOP (stereo)', 'MonoLoco', 'Monoloco++'],
                  "methods": ['m3d', 'geometric', 'monopsr', '3dop', 'monoloco', 'monoloco_pp'],

@@ -22,12 +22,12 @@ class EvalKitti:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     CLUSTERS = ('easy', 'moderate', 'hard', 'all', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25',
-                '27', '29', '31', '49')
+                '27', '29', '31', '49', '54', '63', '74')
     ALP_THRESHOLDS = ('<0.5m', '<1m', '<2m')
-    OUR_METHODS = ['monoloco_pp']#['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
+    OUR_METHODS = ['monoloco_pp', 'monstereo']#['geometric', 'monoloco', 'monoloco_pp', 'pose', 'reid', 'monstereo']
     METHODS_MONO = ['m3d']#, 'monopsr']
-    METHODS_STEREO = []#['3dop', 'psf', 'pseudo-lidar', 'e2e', 'oc-stereo']
-    BASELINES = []#['task_error', 'pixel_error']
+    METHODS_STEREO = ['3dop', 'pseudo-lidar']#['3dop', 'psf', 'pseudo-lidar', 'e2e', 'oc-stereo']
+    BASELINES = []#'task_error', 'pixel_error']
     HEADERS = ('method', '<0.5', '<1m', '<2m', 'easy', 'moderate', 'hard', 'all')
     CATEGORIES = ('pedestrian',)
 
@@ -58,6 +58,11 @@ class EvalKitti:
         self.dic_thresh_conf = {method: (thresh_conf_monoloco if method in self.OUR_METHODS
                                          else thresh_conf_base)
                                 for method in self.methods}
+
+        if not vehicles:
+            index = self.methods.index('pseudo-lidar')
+            self.methods.pop(index)
+            print(self.methods)
         if 'monopsr' in self.methods:
             self.dic_thresh_conf['monopsr'] += 0.3
         self.dic_thresh_conf['e2e-pl'] = -100  # They don't have enough detections
@@ -133,10 +138,10 @@ class EvalKitti:
 
     def printer(self, show, save):
         if save or show:
-            show_results(self.dic_stats, self.CLUSTERS, show, save)
-            show_spread(self.dic_stats, self.CLUSTERS, show, save)
-            show_box_plot(self.errors, self.CLUSTERS, show, save)
-            show_task_error(show, save)
+            show_results(self.dic_stats,self.methods ,self.CLUSTERS, show, save, vehicles=self.vehicles)
+            show_spread(self.dic_stats, self.CLUSTERS, show, save, vehicles=self.vehicles)
+            show_box_plot(self.errors, self.CLUSTERS, show, save, vehicles=self.vehicles)
+            show_task_error(show, save, vehicles=self.vehicles)
 
     def _parse_txts(self, path, method):
 
@@ -164,11 +169,6 @@ class EvalKitti:
                         cat.append('Pedestrian'if not self.vehicles else 'Car')
                     else:
                         line = line_str.split()
-                        check_wesh = check_conditions(line,
-                                            category='pedestrian' if not self.vehicles else 'car',
-                                            method=method,
-                                            thresh=self.dic_thresh_conf[method])
-
                         if check_conditions(line,
                                             category='pedestrian' if not self.vehicles else 'car',
                                             method=method,
@@ -333,11 +333,12 @@ class EvalKitti:
                 for perc in self.ALP_THRESHOLDS:
                     print("{} Instances with error {}: {:.2f} %"
                           .format(key, perc, 100 * average(self.errors[key][perc])))
-
-                print("\nMatched annotations: {:.1f} %".format(self.errors[key]['matched']))
-                print(" Detected annotations : {}/{} ".format(self.dic_cnt[key], self.cnt_gt['all']))
-                print("-" * 100)
-
+                try:
+                    print("\nMatched annotations: {:.1f} %".format(self.errors[key]['matched']))
+                    print(" Detected annotations : {}/{} ".format(self.dic_cnt[key], self.cnt_gt['all']))
+                    print("-" * 100)
+                except(TypeError):
+                    print("Nothing detected")
             print("precision 1: {:.2f}".format(self.dic_stats['test']['monoloco']['all']['prec_1']))
             print("precision 2: {:.2f}".format(self.dic_stats['test']['monoloco']['all']['prec_2']))
 

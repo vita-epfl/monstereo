@@ -132,13 +132,13 @@ class PreprocessKitti:
             if keypoints:
                 
 
-                if not self.monocular:
-                    annotations_r, kk_r, tt_r = factory_file(path_calib, self.dir_ann, basename, mode='right')
-                    boxes_r, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=min_conf)
-                    cat = get_category(keypoints, os.path.join(self.dir_byc_l, basename + '.json'))
+                #if not self.monocular:
+                annotations_r, kk_r, tt_r = factory_file(path_calib, self.dir_ann, basename, mode='right')
+                boxes_r, keypoints_r = preprocess_pifpaf(annotations_r, im_size=(width, height), min_conf=min_conf)
+                cat = get_category(keypoints, os.path.join(self.dir_byc_l, basename + '.json'))
                     
-                else:
-                    keypoints_r = None
+                # else:
+                #    keypoints_r = None
                 
                 if not keypoints_r:  # Case of no detection
                     all_boxes_gt, all_ys = [boxes_gt], [ys]
@@ -181,7 +181,6 @@ class PreprocessKitti:
                         keypoint = keypoints[idx:idx + 1]
                         lab = ys[idx_gt][:-1]
 
-                        #keypoint = clear_keypoints(keypoint)
                         # Preprocess MonoLoco++
                         if self.monocular:
                             inp = preprocess_monoloco(keypoint, kk).view(-1).tolist()
@@ -253,8 +252,6 @@ class PreprocessKitti:
 
                                 for i, lab in enumerate(labels_aug):
                                     (kps, kps_r) = kps_aug[i]
-                                    #kps = clear_keypoints(kps)
-                                    #kps_r = clear_keypoints(kps_r)
                                     input_l = preprocess_monoloco(kps, kk).view(-1)
                                     input_r = preprocess_monoloco(kps_r, kk).view(-1)
                                     keypoint = torch.cat((kps, kps_r), dim=2).tolist()
@@ -295,7 +292,7 @@ class PreprocessKitti:
                 .format(100*cnt_match_l / (cnt_gt['train'] + cnt_gt['val']), 100*cnt_match_r / cnt_gt['train']))
             print("Total annotations: {}".format(cnt_tot))
             print("Total number of vans: {}\n".format(cnt_cyclist))
-            print("Ambiguous instances removed: {}".format(cnt_ambiguous))
+            print("Ambiguous s removed: {}".format(cnt_ambiguous))
             print("Extra pairs created with horizontal flipping: {}\n".format(cnt_extra_pair))
         else:
             print("Number of GT files: {}. Files with at least one pedestrian: {}.  Files not found: {}"
@@ -388,17 +385,3 @@ def crop_and_draw(im, box, keypoint):
     w_crop = crop.shape[1]
 
     return crop, h_crop, w_crop
-
-def clear_keypoints(keypoints):
-    #print("KEYPOINTS_BEFORE", keypoints)
-
-    new_keypoints = keypoints
-    for i, kps in enumerate(keypoints):
-        mean = keypoints[i, 0:2, (keypoints[i,2, :]>0) ].mean(dim = 1)
-        mean[mean != mean] = 0      # set Nan to 0
-        #mean =torch.ones(mean.size())*(12000)
-        if (keypoints[i,2, :]<=0).sum() != 0: # BE SURE THAT THE CONFIDENCE IS NOT EQUAL TO 0
-            new_keypoints[i, 0:2, (keypoints[i,2, :]<=0)] = torch.transpose(mean.repeat((keypoints[i,2, :]<=0).sum() , 1), 0, 1)
-
-    #print("KEYPOINTS_AFTER", keypoints)
-    return new_keypoints

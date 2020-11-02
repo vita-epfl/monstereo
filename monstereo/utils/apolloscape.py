@@ -2,11 +2,17 @@
 import math
 import os
 import glob
+import json
 
 import numpy as np
 
 from collections import namedtuple
 import numpy as np
+
+#Clusters for apolloscape:
+
+APOLLO_CLUSTERS = ['10', '20', '30', '50', '>50']
+APOLLO_CLUSTERS = ['5', '10', '20', '35', '50', '60', '70', '>74']
 
 #? Set of functions for apolloscape
 
@@ -218,11 +224,132 @@ def pose_extraction(model_projected, model):
     
     mat = np.matmul(np.linalg.pinv(model), model_projected)
     
-    #print(mat)
-    
-    #print("extracted matrix", mat.transpose())
     return trans_mat_to_vec(mat.transpose()), mat.transpose()
 
+def bbox_3d_extract(vertices):
+    
+    min_x = np.min(vertices[:,0])
+    max_x= np.max(vertices[:,0])
+    min_y = np.min(vertices[:,1])
+    max_y= np.max(vertices[:,1])
+    min_z = np.min(vertices[:,2])
+    max_z= np.max(vertices[:,2])
+    
+    h = max_y - min_y
+    w = max_x - min_x
+    l = max_z- min_z
+    
+    bbox_3d=[]
+    for x in [min_x, max_x]:
+        for y in [min_y, max_y]:
+            for z in [min_z, max_z]:
+                bbox_3d.append([x,y,z])
+                
+    
+    return(np.array(bbox_3d), w, l, h)
+
+def car_projection( car_model, scale , T, turn_over = False, bbox= False):
+    # perform the projection of the CAD models of the cars in the 3D space (use car_models_json)
+    with open(car_model) as json_file:
+        data = json.load(json_file) #Loading of the vehicle CAD model
+        vertices = np.array(data['vertices']) # extraction of the vertices
+
+        if (turn_over): # used to turn the vehicle over its z axis (180 degree turn) 
+                        # It was shown that the pose estimation have a precomputed rotation of the carts over their z axis 
+                        # Reminder: the z axis is the one of the depth
+            z_rot = np.array([0.,0., np.pi, 0.0,0.0,0.0])
+            vertices = project(z_rot, scale, vertices) #Pre-rotation of the vehicle over its z axis
+        
+        
+        vertices_r = project(T, scale, vertices) #projection in the 3D space
+        triangles = np.array(data['faces']) - 1      
+        results = vertices_r, triangles
+        
+        if bbox:
+            bbox_3d, w, l, h= bbox_3d_extract(vertices)
+            bbox_3d_r = project(T, scale, bbox_3d)      # Place the bounding box at its place in the 3D space
+            
+            results = vertices_r, triangles, bbox_3d_r, w, l, h
+        
+        return results
+
+def pifpaf_info_extractor(json_pifpaf):
+    
+    #Extract the list of keypoints from the json files of openpifpaf
+    with open(json_pifpaf) as json_file:
+        data = json.load(json_file)
+        list_keypoints  =[]
+        for index, vehicle in enumerate(data):
+            #print("Vehicle n°", index)
+            keypoints = np.reshape(vehicle['keypoints'], [-1,3])[:,[2,0,1]] 
+            bbox = vehicle['bbox']
+            score = vehicle['score']
+            cat_id = vehicle['category_id']
+            
+            list_keypoints.append(keypoints)
+            
+        return list_keypoints
+
+def keypoint_expander(vertices_2d, keypoints, buffer = 100, kps_3d = True) :
+    #process the existing keypoints and assign them a depth by minimizing the 
+    #distance with the vertices of the projected CAD models.
+
+    new_keypoints =[]
+    if len(keypoints.shape) == 1:
+        keypoints = [keypoints]
+
+    if kps_3d == False:
+        return np.array(keypoints)
+        
+    for keypoint in keypoints:
+        if len(keypoint)<2:
+            print("ouch")
+        if len(vertices_2d[0])<2:
+            print("ouch 2")
+            
+            
+        res = np.ones([len(vertices_2d),2])*keypoint[1:] - np.transpose([vertices_2d[:,0]/vertices_2d[:,2], vertices_2d[:,1]/vertices_2d[:,2]])
+        
+        dist = np.linalg.norm(res, axis = 1)
+        
+        z = np.min(vertices_2d[np.argsort(dist)[0:buffer], 2])
+        
+        
+        new_keypoints.append([keypoint[0], keypoint[1], keypoint[2], z])
+        
+    return np.array(new_keypoints)
+
+def keypoints_to_cad_model(keypoints, vertices_cad_dic, radius = 160):
+    # Associate for each CAD model a set of keypoints
+    keypoints_to_cad = {}
+    num_keypoints = len(keypoints)
+    if len(keypoints.shape) == 1:
+        keypoints = [keypoints]
+    
+    
+    for i, vertices_2d in vertices_cad_dic.items():
+        
+        for j, keypoint in enumerate(keypoints):
+            
+            res = np.ones([len(vertices_2d),2])*keypoint[1:] - np.transpose([vertices_2d[:,0]/vertices_2d[:,2], vertices_2d[:,1]/vertices_2d[:,2]])
+            dist = np.min( np.linalg.norm(res, axis = 1 ))
+            
+            if i == 0 and dist < radius:
+                keypoints_to_cad[j] = [i, dist]
+            elif i == 0 and dist >= radius:
+                keypoints_to_cad[j] = [-1, np.infty]
+                
+            elif dist < keypoints_to_cad[j][1] and dist <= radius:
+                keypoints_to_cad[j] = [i, dist]
+                
+    
+    count = 0
+    result = -1
+    
+    a = np.array( list( keypoints_to_cad.values()))[:,0]
+    index, counts = np.unique(a, return_counts=True)
+    
+    return keypoints_to_cad, index[np.argmax(counts)], np.max(counts)
 
 
 if __name__ == '__main__':

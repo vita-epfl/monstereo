@@ -99,6 +99,7 @@ def preprocess_monoloco(keypoints, kk, zero_center=False, kps_3d = False):
     return kps_out
 
 def clear_keypoints(keypoints, nb_dim = 2):
+
     for i, kps in enumerate(keypoints):
 
         #ensure that the  values are stored in the GPU
@@ -111,7 +112,7 @@ def clear_keypoints(keypoints, nb_dim = 2):
 
         #? Try to generate a subset of "synthetic keypoints according to a normal distribution
         
-        """std = keypoints[i, 0:nb_dim, (keypoints[i,nb_dim, :]>0) ].std(dim = 1).to(keypoints.device) 
+        std = keypoints[i, 0:nb_dim, (keypoints[i,nb_dim, :]>0) ].std(dim = 1).to(keypoints.device) 
         std[std != std] = 0      # set Nan to 0
     
         if (keypoints[i,nb_dim, :]<=0).sum() != 0: # BE SURE THAT THE CONFIDENCE IS NOT EQUAL TO 0
@@ -122,7 +123,7 @@ def clear_keypoints(keypoints, nb_dim = 2):
                 #out_new = torch.normal(mean = mean, std = std).unsqueeze(0) 
                 #out_prev= torch.cat([out_prev, out_new], dim = 0)
                 if keypoints[i,nb_dim, j]<=0:
-                    keypoints[i, 0:nb_dim, j] = torch.normal(mean = mean, std = std/np.sqrt(2))
+                    keypoints[i, 0:nb_dim, j] = torch.normal(mean = mean, std = std/2)
 
             #print("AFTER", keypoints[i, 0:nb_dim, :] )"""
         

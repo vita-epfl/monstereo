@@ -177,6 +177,11 @@ class Loco:
             dds_gt = [el[3] for el in dic_gt['ys']]
             matches = get_iou_matches(boxes, boxes_gt, iou_min=iou_min)
             dic_out['gt'] = [True]
+            try:
+                car_model = dic_out['car_model']
+            except KeyError:
+                pass
+        
             if verbose:
                 print("found {} matches with ground-truth".format(len(matches)))
 
@@ -236,6 +241,9 @@ class Loco:
                 dic_out['angles_egocentric'].append(float(dic_in['yaw'][1][idx]))  # Egocentric angle
             except KeyError:
                 continue
+            
+            if len(car_model) !=0:
+                dic_out['car_model'] = car_model[idx]   #Only for apolloscape
 
             # Only for MonStereo
             try:

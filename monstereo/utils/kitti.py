@@ -80,7 +80,7 @@ def check_conditions(line, category, method, thresh=0.3, vehicles = False):
 
     if category == 'all':
         if vehicles:
-            category = ['car', 'van']
+            category = ['car']
         else:
             category = ['pedestrian', 'person_sitting', 'cyclist']
         #['car', 'van', 'Truck']

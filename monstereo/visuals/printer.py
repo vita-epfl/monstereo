@@ -11,8 +11,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.patches import Ellipse, Circle, Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.mplot3d import Axes3D
 
-from ..utils import pixel_to_camera, get_task_error
+
+from ..utils import pixel_to_camera, get_task_error, project
 
 
 class Printer:
@@ -54,6 +56,14 @@ class Printer:
         self.xx_gt = [xx[0] for xx in dic_ann['xyz_real']]
         self.xx_pred = [xx[0] for xx in dic_ann['xyz_pred']]
 
+        self.pos_pred = [xx[0:3] for xx in dic_ann['xyz_pred']]
+        self.pos_gt = [xx[0:3] for xx in dic_ann['xyz_real']]
+
+        try:
+            self.angles = dic_ann['angles_egocentric']
+        except KeyError:
+                print("key error for the angle")
+
         # Do not print instances outside z_max
         self.zz_gt = [xx[2] if xx[2] < self.z_max - self.stds_epi[idx] else 0
                       for idx, xx in enumerate(dic_ann['xyz_real'])]
@@ -66,6 +76,13 @@ class Printer:
         self.boxes = dic_ann['boxes']
         self.boxes_gt = dic_ann['boxes_gt']
 
+        try:
+            self.car_models = dic_ann['car_model']
+            print("CAR_MODEL PRESENT")
+        except KeyError:
+            self.car_models = None
+
+
         self.uv_camera = (int(self.im.size[0] / 2), self.im.size[1])
         self.radius = 11 / 1600 * self.width
         if dic_ann['aux']:
@@ -77,7 +94,39 @@ class Printer:
         figures = []
 
         #  Initialize combined figure, resizing it for aesthetic proportions
-        if 'combined' in self.output_types:
+        if 'combined_3d' in self.output_types:
+            assert 'bird' and 'front' not in self.output_types, \
+                "combined figure cannot be print together with front or bird ones"
+
+            self.y_scale = self.width / (self.height * 2)  # Defined proportion
+            if self.y_scale < 0.95 or self.y_scale > 1.05:  # allows more variation without resizing
+                self.im = self.im.resize((self.width, round(self.height * self.y_scale)))
+            self.width = self.im.size[0]
+            self.height = self.im.size[1]
+            fig_width = self.fig_width + 0.6 * self.fig_width
+
+            fig_height = 2 * self.fig_width * self.height / self.width
+
+            # Distinguish between KITTI images and general images
+            fig_ar_1 = 0.8
+            width_ratio = 1.9
+            self.extensions.append('.combined_3d.png')
+
+            fig, (ax0s, ax1s) = plt.subplots(2, 2, sharey=False, gridspec_kw={'width_ratios': [2.4, 1.7]},
+                                           figsize=(fig_width, fig_height))
+            print("HERE", len(ax0s))
+            ax0, ax1 = ax0s
+            ax2, ax3 = ax1s
+            ax3.remove()
+            ax3 = fig.add_subplot(2,2,4,projection='3d')
+
+            ax1.set_aspect(fig_ar_1)
+            fig.set_tight_layout(True)
+            fig.subplots_adjust(left=0.02, right=0.98, bottom=0, top=1, hspace=0, wspace=0.02)
+
+            figures.append(fig)
+
+        elif 'combined' in self.output_types:
             assert 'bird' and 'front' not in self.output_types, \
                 "combined figure cannot be print together with front or bird ones"
 
@@ -115,7 +164,7 @@ class Printer:
             figures.append(fig0)
 
         # Create front figure axis
-        if any(xx in self.output_types for xx in ['front', 'combined']):
+        if any(xx in self.output_types for xx in ['front', 'combined', 'combined_3d']):
             ax0 = self.set_axes(ax0, axis=0)
 
             divider = make_axes_locatable(ax0)
@@ -137,14 +186,36 @@ class Printer:
             fig1, ax1 = plt.subplots(1, 1)
             fig1.set_tight_layout(True)
             figures.append(fig1)
-        if any(xx in self.output_types for xx in ['bird', 'combined']):
+        if any(xx in self.output_types for xx in ['bird', 'combined', 'combined_3d']):
             ax1 = self.set_axes(ax1, axis=1)  # Adding field of view
             axes.append(ax1)
+
+        if any(xx in self.output_types for xx in ['combined_3d']):
+            ax2 =self.set_axes(ax2, axis = 2)
+            ax3 =self.set_axes(ax3, axis = 3)
+            axes.append(ax2)
+            axes.append(ax3)
+        
         return figures, axes
 
     def draw(self, figures, axes, dic_out, image, show_all=False, draw_text=True, legend=True, draw_box=False,
-             save=False, show=False):
+             save=False, show=False, kps=None):
 
+        keypoints = []
+        if any(xx in self.output_types for xx in ['combined_3d']):
+            _, _, pifpaf_out = kps[:]
+            
+            for pifpaf_o in pifpaf_out:
+                #keypoints.append(np.reshape(pifpaf_o['keypoints'], (3,-1)))
+                length = len(pifpaf_o['keypoints'])/3
+                x = pifpaf_o['keypoints'][0::3]
+                """print(x)
+                print(x>0)
+                x = x[x>0]"""
+                y = pifpaf_o['keypoints'][1::3] 
+                """y = y[y>0]
+                print("X", x, y)"""
+                keypoints.append([x,y])
         # Process the annotation dictionary of monoloco
         self._process_results(dic_out)
 
@@ -158,7 +229,7 @@ class Printer:
         num = 0
         self.mpl_im0.set_data(image)
         for idx in iterator:
-            if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
+            if any(xx in self.output_types for xx in ['front', 'combined', 'combined_3d']) and self.zz_pred[idx] > 0:
 
                 color = self.cmap((self.zz_pred[idx] % self.z_max) / self.z_max)
                 color = 'red'
@@ -173,7 +244,7 @@ class Printer:
         # Draw the bird figure
         num = 0
         for idx in iterator:
-            if any(xx in self.output_types for xx in ['bird', 'combined']) and self.zz_pred[idx] > 0:
+            if any(xx in self.output_types for xx in ['bird', 'combined', 'combined_3d']) and self.zz_pred[idx] > 0:
 
                 # Draw ground truth and uncertainty
                 self.draw_uncertainty(axes, idx)
@@ -183,9 +254,17 @@ class Printer:
                     self.draw_text_bird(axes, idx, num)
                     num += 1
         # Add the legend
+
+        
+        if any(xx in self.output_types for xx in ['combined_3d']):
+            for idx in iterator:
+                self.draw_keypoints(axes, keypoints[idx], idx)
+                self.draw_3d_visu(axes, idx)
+
+
         if legend:
             draw_legend(axes)
-
+            
         # Draw, save or/and show the figures
         for idx, fig in enumerate(figures):
             fig.canvas.draw()
@@ -194,6 +273,38 @@ class Printer:
             if show:
                 fig.show()
             plt.close(fig)
+
+    def draw_keypoints(self, axes, keypoints, idx):
+        indexes = np.array(keypoints[1])>0
+        axes[2].scatter(keypoints[0], np.array(keypoints[1])*self.y_scale)
+
+    def draw_3d_visu(self, axes, idx):
+        import json
+        if len(self.car_models) !=0:
+            car_model = self.car_models[idx]
+        else:
+            car_model = 'data/apolloscape/train/car_models_json/019-SUV.json'
+        with open(car_model) as json_file:
+            data = json.load(json_file)
+        vertices = np.array(data['vertices'])
+        triangles = np.array(data['faces']) - 1
+
+        x,y,z = self.pos_pred[idx]
+        T = np.float32([0.0, self.angles[idx] ,0.0 ,x,y,z])
+        T = np.float32([0.0, self.angles[idx] , 0.0 ,x,y,z])
+        scale = np.float32([1, 1, 1])
+
+        vertices_r = project(T, scale, vertices )
+        #ax.set_title('car_type: '+data['car_type'])
+        axes[3].set_xlim([-20, 20])
+        axes[3].set_ylim([0, 70])
+        axes[3].set_zlim([0, 10])
+        axes[3].set_xlabel("X")
+        axes[3].set_ylabel("Y")
+        axes[3].set_zlabel("Z")
+        axes[3].plot_trisurf(vertices_r[:,0], vertices_r[:,2], triangles, -vertices_r[:,1] + np.mean(vertices_r[:,1]), shade=True, color='grey')
+
+
 
     def draw_uncertainty(self, axes, idx):
 
@@ -293,7 +404,7 @@ class Printer:
         axes[0].add_patch(circle)
 
     def set_axes(self, ax, axis):
-        assert axis in (0, 1)
+        assert axis in (0, 1, 2, 3)
 
         if axis == 0:
             ax.set_axis_off()
@@ -303,7 +414,7 @@ class Printer:
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
 
-        else:
+        if axis == 1:
             uv_max = [0., float(self.height)]
             xyz_max = pixel_to_camera(uv_max, self.kk, self.z_max)
             x_max = abs(xyz_max[0])  # shortcut to avoid oval circles in case of different kk
@@ -313,6 +424,18 @@ class Printer:
             ax.set_xlim(-x_max+corr, x_max-corr)
             ax.set_ylim(0, self.z_max+1)
             ax.set_xlabel("X [m]")
+
+        if axis == 2:
+            ax.set_axis_off()
+            ax.set_xlim(0, self.width)
+            ax.set_ylim(self.height, 0)
+            self.mpl_im0 = ax.imshow(self.im)
+            #ax.set_ylabel("test_ax_2")
+
+        
+        if axis == 3:
+            ax.set_ylabel("test_ax_3")
+            print(type(ax))
 
         return ax
 

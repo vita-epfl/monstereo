@@ -26,7 +26,7 @@ NUM_ANNOTATIONS = 7481
 class GenerateKitti:
 
     METHODS = ['monstereo', 'monoloco_pp', 'monoloco', 'geometric']
-    METHODS = ['monoloco_pp']
+    METHODS = ['monoloco_pp', 'monstereo']
 
 
     def __init__(self, model, dir_ann, p_dropout=0.2, n_dropout=0, hidden_size=1024, vehicles = False, model_mono = None):
@@ -121,7 +121,9 @@ class GenerateKitti:
 
             #!bookmark
             min_conf = 0.1
-            min_conf = 0.35*min_conf
+            if self.vehicles:
+                min_conf = 0.01
+            #min_conf = 0.35*min_conf
             boxes, keypoints = preprocess_pifpaf(annotations, im_size=(width, height), min_conf=min_conf)
             cat = get_category(keypoints, os.path.join(self.dir_byc, basename + '.json'))
             
@@ -256,13 +258,15 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
 
             # Set the scale to obtain (approximately) same recall at evaluation¨
             #!bookmark
-            n = 2.5
+            n = 3
             if mode == 'monstereo':
-                conf_scale = 0.03
-                conf_scale = n*conf_scale
+                conf_scale = n*0.03
+                if vehicles:
+                    conf_scale= n*0.03
             elif mode == 'monoloco_pp':
-                conf_scale = 0.033
-                conf_scale = n*conf_scale
+                conf_scale = n*0.033
+                if vehicles:
+                    conf_scale = n*0.033
             else:
                 conf_scale = 0.055
 
@@ -272,10 +276,10 @@ def save_txts(path_txt, all_inputs, all_outputs, all_params, mode='monoloco', ca
             category = cat[idx]
 
             if vehicles:
-                if category < 0.1:
-                    ff.write("%s " % 'Car')
-                else:
-                    ff.write("%s " % 'Van')
+                #if category < 0.1:
+                ff.write("%s " % 'Car')
+                #else:
+                #    ff.write("%s " % 'Van')
             else:
                 if category < 0.1:
                     ff.write("%s " % 'Pedestrian')

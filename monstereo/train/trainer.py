@@ -25,7 +25,7 @@ from .datasets import KeypointsDataset
 from .losses import CompositeLoss, MultiTaskLoss, AutoTuneMultiTaskLoss
 from ..network import extract_outputs, extract_labels
 from ..network.architectures import SimpleModel
-from ..utils import set_logger, threshold_loose, threshold_mean, threshold_strict
+from ..utils import set_logger, threshold_loose, threshold_mean, threshold_strict, APOLLO_CLUSTERS
 
 
 class Trainer:
@@ -64,6 +64,9 @@ class Trainer:
         self.sched_step = sched_step
         self.sched_gamma = sched_gamma
         self.clusters = ['10', '20', '30', '50', '>50']
+        if self.dataset == 'apolloscape':
+            self.clusters = APOLLO_CLUSTERS
+            print("CLUSTERS", self.clusters)
         self.hidden_size = hidden_size
         self.n_stage = n_stage
         self.dir_out = dir_out
@@ -78,6 +81,7 @@ class Trainer:
         if not self.monocular:
             self.identifier+="-stereo"
 
+        self.identifier+="_"+dataset
         # Select the device
         use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if use_cuda else "cpu")
@@ -140,8 +144,8 @@ class Trainer:
 
         # Dataloader
         self.dataloaders = {phase: DataLoader(KeypointsDataset(self.joints, phase=phase),
-                                              batch_size=bs, shuffle=True, drop_last=True) for phase in ['train', 'val']} #the drop_last flag is only there to forget the latest value o the dataset in case of a batch normalization where we don't have more than 1 input in the batch
-
+                                              batch_size=bs, shuffle=True) for phase in ['train', 'val']} #the drop_last flag is only there to forget the latest value o the dataset in case of a batch normalization where we don't have more than 1 input in the batch
+        #print("HERE")
         self.dataset_sizes = {phase: len(KeypointsDataset(self.joints, phase=phase))
                               for phase in ['train', 'val']}
 
@@ -170,6 +174,7 @@ class Trainer:
         for epoch in range(self.num_epochs):
             running_loss = defaultdict(lambda: defaultdict(int))
 
+
             # Each epoch has a training and validation phase
             for phase in ['train', 'val']:
                 if phase == 'train':
@@ -177,11 +182,11 @@ class Trainer:
                 else:
                     self.model.eval()  # Set model to evaluate mode
 
-                
+                #print("DATALOADERS",self.dataloaders)
                 for inputs, labels, _, _ in self.dataloaders[phase]:
-                    #print(inputs, phase, inputs.size())
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
+                    
                     with torch.set_grad_enabled(phase == 'train'):
                         if phase == 'train':
                             outputs = self.model(inputs)
@@ -201,7 +206,6 @@ class Trainer:
             self.cout_values(epoch, epoch_losses, running_loss)
 
             # deep copy the model
-
             if epoch_losses['val'][self.val_task][-1] < best_acc:
                 best_acc = epoch_losses['val'][self.val_task][-1]
                 best_training_acc = epoch_losses['train']['all'][-1]
@@ -238,6 +242,7 @@ class Trainer:
         # Average distance on training and test set after unnormalizing
         self.model.eval()
         dic_err = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: 0)))  # initialized to zero
+        self.errors = defaultdict(list)
         dic_err['val']['sigmas'] = [0.] * len(self.tasks)
         dataset = KeypointsDataset(self.joints, phase='val')
         size_eval = len(dataset)
@@ -273,6 +278,10 @@ class Trainer:
                 self.compute_stats(outputs, labels, dic_err['val'], size_eval, clst=clst)
                 self.cout_stats(dic_err['val'], size_eval, clst=clst)
 
+        
+        show_box_plot(self.errors, clusters = self.clusters, show = True, save = True, vehicles=self.vehicles, dataset = self.dataset)
+
+
         # Save the model and the results
         if self.save and not load:
             torch.save(self.model.state_dict(), self.path_model)
@@ -296,9 +305,10 @@ class Trainer:
             dic_err[clst][task] += float(loss_values[idx].item()) * (outputs.size(0) / size_eval)
 
         # Distance 
-
         errs = torch.abs(extract_outputs(outputs)['d'] - extract_labels(labels)['d'])
 
+        for err in errs:
+            self.errors[clst].append(err)
         assert rel_frac > 0.99, "Variance of errors not supported with partial evaluation"
 
         # Uncertainty
@@ -428,7 +438,6 @@ class Trainer:
                 else:
                     string = string + el + ':{:.0f}  '
                     format_list.append(loss * 100)
-
         if epoch % 10 == 0:
             print(string.format(*format_list))
 
@@ -468,3 +477,79 @@ def get_accuracy(outputs, labels):
     mask = outputs >= 0.5
     accuracy = 1. - torch.mean(torch.abs(mask.float() - labels)).item()
     return accuracy
+
+
+def get_distances(clusters):
+    """Extract distances as intermediate values between 2 clusters"""
+    distances = []
+    for idx, _ in enumerate(clusters[:-1]):
+        clst_0 = float(clusters[idx])
+        clst_1 = float(clusters[idx + 1])
+        distances.append((clst_1 - clst_0) / 2 + clst_0)
+    return tuple(distances)
+
+def show_box_plot(dic_errors, clusters, show=False, save=False, vehicles = False, dataset = 'nuscenes'):
+    import pandas as pd
+    dir_out = 'docs/'
+    if vehicles:
+        dir_out+=""
+    excl_clusters = clusters[-1]
+    clusters = [int(clst) for clst in clusters if (clst not in excl_clusters and clst in dic_errors.keys())]
+    print("END Clusters", clusters)
+    y_min = 0
+    y_max = 25  # 18 for the other
+    xxs = get_distances(clusters)
+    labels = [str(xx) for xx in xxs]
+
+    
+
+    fig, ax = plt.subplots(figsize = [len(labels)*10, 10])
+
+    data = []
+    for clst, label in zip(clusters[:-1], labels):
+        x = []
+        for tensor in dic_errors[str(clst)]:
+            x.append(tensor.item())
+        
+        data.append(x)
+        
+    ax.boxplot(data)
+    name = 'ALE_'+dataset+"_"+'vehicle' if vehicles else 'human'
+
+    ax.set(
+        axisbelow=True,  # Hide the grid behind plot objects
+        title='Monoloco_pp',
+        xlabel='Ground-truth distance [m]',
+        ylabel='Average localization error (ALE) [m]',
+    )
+
+    plt.rcParams.update({'font.size': 22})
+    ax.set_xticklabels(labels,
+                    rotation=0)
+    """
+    print([clst for clst in clusters[:-1]])
+    print(dic_errors)
+    df = pd.DataFrame([dic_errors[str(clst)].item() for clst in clusters[:-1]]).T
+    df.columns = labels
+
+    print(labels)
+    print(df.head())
+    df.to_csv(r'dataframe.csv')
+    df = df.dropna()
+    plt.figure()
+    _ = df.boxplot()
+    
+    plt.title(name)
+    plt.ylabel('Average localization error (ALE) [m]')
+    plt.xlabel('Ground-truth distance [m]')
+    plt.ylim(y_min, y_max)"""
+
+
+    if save:
+        path_fig = os.path.join(dir_out, 'box_plot_' + name + '.png')
+        fig.tight_layout()
+        fig.savefig(path_fig)
+        print("Figure of box plot saved in {}".format(path_fig))
+    if show:
+        plt.show()
+    plt.close('all')
