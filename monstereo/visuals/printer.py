@@ -206,8 +206,6 @@ class Printer:
         #Bbox
         w = self.boxes[idx][2] - self.boxes[idx][0]
         h = (self.boxes[idx][3] - self.boxes[idx][1]) * self.y_scale
-        w_gt = self.boxes_gt[idx][2] - self.boxes_gt[idx][0]
-        h_gt = (self.boxes_gt[idx][3] - self.boxes_gt[idx][1]) * self.y_scale
         x0 = self.boxes[idx][0]
         y0 = self.boxes[idx][1] * self.y_scale
         y1 = y0 + h
@@ -217,9 +215,6 @@ class Printer:
                               fill=False,
                               color=self.ATTRIBUTES[mode]['color'],
                               linewidth=self.ATTRIBUTES[mode]['linewidth'])
-        # rectangle_gt = Rectangle((self.boxes_gt[idx][0], self.boxes_gt[idx][1] * self.y_scale),
-        #                          width=ww_box_gt, height=hh_box_gt, fill=False, color='g', linewidth=1)
-        # axes[0].add_patch(rectangle_gt)
         ax.add_patch(rectangle)
         z_str = str(z).split(sep='.')
         text = z_str[0] + '.' + z_str[1][0]
