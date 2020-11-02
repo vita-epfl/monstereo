@@ -20,8 +20,8 @@ def get_angle(xx, zz):
     return angle
 
 
-def image_attributes(dpi):
-    c = dpi/200
+def image_attributes(dpi, output_types):
+    c = 0.7 if 'front' in output_types else 1.0
     return dict(dpi=dpi,
                 fontsize_d=round(14 * c),
                 fontsize_bv=round(24 * c),
@@ -59,13 +59,12 @@ class Printer:
         self.kk = kk
         self.output_types = args.output_types
         self.z_max = args.z_max  # To include ellipses in the image
-        self.video = args.video
         self.show_all = args.show_all
         self.show = args.show_all
         self.save = not args.no_save
 
         # define image attributes
-        self.attr = image_attributes(args.dpi)
+        self.attr = image_attributes(args.dpi, args.output_types)
 
     def _process_results(self, dic_ann):
         # Include the vectors inside the interval given by z_max
@@ -163,7 +162,9 @@ class Printer:
                                      "use the command --show_all" + '\n' + "-" * 110)
 
         # Draw the front figure
-        number = dict(flag=not self.video, num=97)  # character a
+        number = dict(flag=False, num=97)
+        if 'combined' in self.output_types:
+            number['flag'] = True  # add numbers
         self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
