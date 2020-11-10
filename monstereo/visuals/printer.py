@@ -1,5 +1,5 @@
 """
-Class for drawing frontal, bird-eye-view and combined figures
+Class for drawing frontal, bird-eye-view and multi figures
 """
 # pylint: disable=attribute-defined-outside-init
 import math
@@ -90,14 +90,14 @@ class Printer:
             self.auxs = dic_ann['aux'] if dic_ann['aux'] else None
 
     def factory_axes(self):
-        """Create axes for figures: front bird combined"""
+        """Create axes for figures: front bird multi"""
         axes = []
         figures = []
 
-        #  Initialize combined figure, resizing it for aesthetic proportions
-        if 'combined' in self.output_types:
+        #  Initialize multi figure, resizing it for aesthetic proportion
+        if 'multi' in self.output_types:
             assert 'bird' and 'front' not in self.output_types, \
-                "combined figure cannot be print together with front or bird ones"
+                "multi figure cannot be print together with front or bird ones"
 
             self.y_scale = self.width / (self.height * 2)  # Defined proportion
             if self.y_scale < 0.95 or self.y_scale > 1.05:  # allows more variation without resizing
@@ -120,7 +120,7 @@ class Printer:
 
             figures.append(fig)
             assert 'front' not in self.output_types and 'bird' not in self.output_types, \
-                "--combined arguments is not supported with other visualizations"
+                "--multi arguments is not supported with other visualizations"
 
         # Initialize front figure
         elif 'front' in self.output_types:
@@ -133,7 +133,7 @@ class Printer:
             figures.append(fig0)
 
         # Create front figure axis
-        if any(xx in self.output_types for xx in ['front', 'combined']):
+        if any(xx in self.output_types for xx in ['front', 'multi']):
             ax0 = self._set_axes(ax0, axis=0)
             axes.append(ax0)
         if not axes:
@@ -145,7 +145,7 @@ class Printer:
             fig1, ax1 = plt.subplots(1, 1)
             fig1.set_tight_layout(True)
             figures.append(fig1)
-        if any(xx in self.output_types for xx in ['bird', 'combined']):
+        if any(xx in self.output_types for xx in ['bird', 'multi']):
             ax1 = self._set_axes(ax1, axis=1)  # Adding field of view
             axes.append(ax1)
         return figures, axes
@@ -163,11 +163,11 @@ class Printer:
 
         # Draw the front figure
         number = dict(flag=False, num=97)
-        if 'combined' in self.output_types:
+        if 'multi' in self.output_types:
             number['flag'] = True  # add numbers
         self.mpl_im0.set_data(image)
         for idx in iterator:
-            if any(xx in self.output_types for xx in ['front', 'combined']) and self.zz_pred[idx] > 0:
+            if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
                 self._draw_front(axes[0],
                                  self.dd_pred[idx],
                                  idx,
@@ -177,7 +177,7 @@ class Printer:
         # Draw the bird figure
         number['num'] = 97
         for idx in iterator:
-            if any(xx in self.output_types for xx in ['bird', 'combined']) and self.zz_pred[idx] > 0:
+            if any(xx in self.output_types for xx in ['bird', 'multi']) and self.zz_pred[idx] > 0:
 
                 # Draw ground truth and uncertainty
                 self._draw_uncertainty(axes, idx)
@@ -339,7 +339,7 @@ class Printer:
 
     def _draw_legend(self, axes):
         # Bird eye view legend
-        if any(xx in self.output_types for xx in ['bird', 'combined']):
+        if any(xx in self.output_types for xx in ['bird', 'multi']):
             handles, labels = axes[1].get_legend_handles_labels()
             by_label = OrderedDict(zip(labels, handles))
             axes[1].legend(by_label.values(), by_label.keys(), loc='best', prop={'size': 15})

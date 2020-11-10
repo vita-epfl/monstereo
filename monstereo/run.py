@@ -35,7 +35,7 @@ def cli():
     predict_parser.add_argument('-o', '--output-directory', help='Output directory')
     predict_parser.add_argument('--output_types', nargs='+', default=['json'],
                                 help='what to output: json keypoints skeleton for Pifpaf'
-                                     'json bird front combined for Monoloco')
+                                     'json bird front or multi for MonStereo')
     predict_parser.add_argument('--no_save', help='to show images', action='store_true')
     predict_parser.add_argument('--show', help='to show images', action='store_true')
     predict_parser.add_argument('--dpi', help='image resolution',  type=int, default=100)
