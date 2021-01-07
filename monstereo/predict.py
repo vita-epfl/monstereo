@@ -38,7 +38,7 @@ def factory_from_args(args):
             args.checkpoint = OPENPIFPAF_PATH
         else:
             print("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
-                  "Using a ShuffleNet version from the web")
+                  "Using a ShuffleNet backbone")
             args.checkpoint = 'shufflenetv2k30'
 
     # Devices
