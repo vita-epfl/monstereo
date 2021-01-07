@@ -39,7 +39,7 @@ def factory_from_args(args):
         else:
             print("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
                   "Using a ShuffleNet version from the web")
-            args.checkpoint = 'shufflenev2k30'
+            args.checkpoint = 'shufflenetv2k30'
 
     # Devices
     args.device = torch.device('cpu')
