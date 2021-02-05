@@ -140,7 +140,7 @@ def predict(args):
             if args.net == 'monoloco_pp':
                 print("Prediction with MonoLoco++")
                 dic_out = net.forward(keypoints, kk)
-                dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt, reorder=not args.social_distance)
+                dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
 
                 if args.social_distance:
                     show_social(args, cpu_image, output_path, pifpaf_out, dic_out)

@@ -172,7 +172,7 @@ class Loco:
             if verbose:
                 print("NO ground-truth associated")
 
-        if reorder:
+        if reorder and matches:
             matches = reorder_matches(matches, boxes, mode='left_right')
 
         all_idxs = [idx for idx, _ in matches] + not_matches
