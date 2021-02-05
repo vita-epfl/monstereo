@@ -100,9 +100,6 @@ def predict(args):
         data, batch_size=args.batch_size, shuffle=False,
         pin_memory=False, collate_fn=datasets.collate_images_anns_meta)
 
-    # visualizers
-    annotation_painter = openpifpaf.show.AnnotationPainter()
-
     for batch_i, (image_tensors_batch, _, meta_batch) in enumerate(data_loader):
         pred_batch = processor.batch(model, image_tensors_batch, device=args.device)
 
@@ -118,15 +115,16 @@ def predict(args):
                 file_name = os.path.basename(meta['file_name'])
                 output_path = os.path.join(args.output_directory, 'out_' + file_name)
             print('image', batch_i, meta['file_name'], output_path)
-            pifpaf_out = [ann.json_data() for ann in pred]
 
             if idx == 0:
-                pifpaf_outputs = pred  # to only print left image for stereo
-                pifpaf_outs = {'left': pifpaf_out}
                 with open(meta_batch[0]['file_name'], 'rb') as f:
                     cpu_image = PIL.Image.open(f).convert('RGB')
+                pifpaf_outs = {
+                    'pred': pred,
+                    'left': [ann.json_data() for ann in pred],
+                    'image': cpu_image}
             else:
-                pifpaf_outs['right'] = pifpaf_out
+                pifpaf_outs['right'] = [ann.json_data() for ann in pred]
 
         # 3D Predictions
         if args.net in ('monoloco_pp', 'monstereo'):
@@ -156,30 +154,31 @@ def predict(args):
             kk = None
 
         # Outputs
-        factory_outputs(args, annotation_painter, cpu_image, output_path, pifpaf_outputs, dic_out=dic_out, kk=kk)
+        factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=kk)
         print('Image {}\n'.format(cnt) + '-' * 120)
         cnt += 1
 
 
-def factory_outputs(args, annotation_painter, cpu_image, output_path, pred, dic_out=None, kk=None):
+def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
     """Output json files or images according to the choice"""
 
-    # Save json file
     if args.net == 'pifpaf':
-        with openpifpaf.show.image_canvas(cpu_image, output_path) as ax:
-            annotation_painter.annotations(ax, pred)
+        annotation_painter = openpifpaf.show.AnnotationPainter()
+        with openpifpaf.show.image_canvas(pifpaf_outs['image'], output_path) as ax:
+            annotation_painter.annotations(ax, pifpaf_outs['pred'])
 
     elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
         print(output_path)
         if args.social_distance:
-            show_social(args, cpu_image, output_path, pred, dic_out)
+            show_social(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
         else:
-            printer = Printer(cpu_image, output_path, kk, args)
+            printer = Printer(pifpaf_outs['image'], output_path, kk, args)
             figures, axes = printer.factory_axes(dic_out)
-            printer.draw(figures, axes, cpu_image)
+            printer.draw(figures, axes, pifpaf_outs['image'])
 
     elif 'json' in args.output_types:
-            with open(os.path.join(output_path + '.monoloco.json'), 'w') as ff:
-                json.dump(dic_out, ff)
+        with open(os.path.join(output_path + '.monoloco.json'), 'w') as ff:
+            json.dump(dic_out, ff)
+
     else:
         print("No output saved, please select one among front, bird, multi, or pifpaf options")

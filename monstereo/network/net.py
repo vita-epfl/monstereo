@@ -243,12 +243,11 @@ class Loco:
         xz_centers = [[xx[0], xx[2]] for xx in dic_out['xyz_pred']]
 
         # Prepare color for social distancing
-        dic_out['social_distance'] = [True if social_interactions(idx, xz_centers, angles, dds,
-                                                                  stds=stds,
-                                                                  threshold_prob=args.threshold_prob,
-                                                                  threshold_dist=args.threshold_dist,
-                                                                  radii=args.radii)
-                                      else False
+        dic_out['social_distance'] = [bool(social_interactions(idx, xz_centers, angles, dds,
+                                                               stds=stds,
+                                                               threshold_prob=args.threshold_prob,
+                                                               threshold_dist=args.threshold_dist,
+                                                               radii=args.radii))
                                       for idx, _ in enumerate(dic_out['xyz_pred'])]
         return dic_out
 
