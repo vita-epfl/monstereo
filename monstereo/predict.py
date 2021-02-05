@@ -83,7 +83,6 @@ def predict(args):
 
     # Load Models
     assert args.net in ('monoloco_pp', 'monstereo', 'pifpaf')
-
     if args.net in ('monoloco_pp', 'monstereo'):
         net = Loco(model=args.model, net=args.net, device=args.device, n_dropout=args.n_dropout, p_dropout=args.dropout)
 
@@ -161,6 +160,12 @@ def predict(args):
 
 def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
     """Output json files or images according to the choice"""
+
+    # Verify conflicting options
+    if any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
+        assert args.net != 'pifpaf', "please use pifpaf original arguments"
+        if args.social_distance:
+            assert args.net == 'monoloco_pp', "Social distancing only works with MonoLoco++ network"
 
     if args.net == 'pifpaf':
         annotation_painter = openpifpaf.show.AnnotationPainter()
