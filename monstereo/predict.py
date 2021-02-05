@@ -155,8 +155,8 @@ def predict(args):
             dic_out = defaultdict(list)
             kk = None
 
-        factory_outputs(args, annotation_painter, cpu_image, output_path, pifpaf_outputs,
-                            dic_out=dic_out, kk=kk)
+        # Outputs
+        factory_outputs(args, annotation_painter, cpu_image, output_path, pifpaf_outputs, dic_out=dic_out, kk=kk)
         print('Image {}\n'.format(cnt) + '-' * 120)
         cnt += 1
 
@@ -172,7 +172,7 @@ def factory_outputs(args, annotation_painter, cpu_image, output_path, pred, dic_
     elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
         print(output_path)
         if args.social_distance:
-            show_social()
+            show_social(args, cpu_image, output_path, pred, dic_out)
         else:
             printer = Printer(cpu_image, output_path, kk, args)
             figures, axes = printer.factory_axes(dic_out)
