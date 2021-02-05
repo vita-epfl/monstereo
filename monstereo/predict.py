@@ -27,6 +27,7 @@ LOG = logging.getLogger(__name__)
 
 OPENPIFPAF_PATH = 'data/models/shufflenetv2k30-201104-224654-cocokp-d75ed641.pkl'  # Default model
 
+
 def factory_from_args(args):
 
     # Data
@@ -142,7 +143,7 @@ def predict(args):
                 dic_out = net.forward(keypoints, kk)
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
                 if args.social_distance:
-                    dic_out = net.social_distance(dic_out)
+                    dic_out = net.social_distance(dic_out, args)
 
             else:
                 print("Prediction with MonStereo")
@@ -154,8 +155,7 @@ def predict(args):
             dic_out = defaultdict(list)
             kk = None
 
-        if not args.social_distance:
-            factory_outputs(args, annotation_painter, cpu_image, output_path, pifpaf_outputs,
+        factory_outputs(args, annotation_painter, cpu_image, output_path, pifpaf_outputs,
                             dic_out=dic_out, kk=kk)
         print('Image {}\n'.format(cnt) + '-' * 120)
         cnt += 1
@@ -169,13 +169,17 @@ def factory_outputs(args, annotation_painter, cpu_image, output_path, pred, dic_
         with openpifpaf.show.image_canvas(cpu_image, output_path) as ax:
             annotation_painter.annotations(ax, pred)
 
-        if any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
-            print(output_path)
-            if dic_out['boxes']:  # Only print in case of detections
-                printer = Printer(cpu_image, output_path, kk, args)
-                figures, axes = printer.factory_axes(dic_out)
-                printer.draw(figures, axes, cpu_image)
+    elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
+        print(output_path)
+        if args.social_distance:
+            show_social()
+        else:
+            printer = Printer(cpu_image, output_path, kk, args)
+            figures, axes = printer.factory_axes(dic_out)
+            printer.draw(figures, axes, cpu_image)
 
-        if 'json' in args.output_types:
+    elif 'json' in args.output_types:
             with open(os.path.join(output_path + '.monoloco.json'), 'w') as ff:
                 json.dump(dic_out, ff)
+    else:
+        print("No output saved, please select one among front, bird, multi, or pifpaf options")
