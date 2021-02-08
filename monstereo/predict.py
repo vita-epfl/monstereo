@@ -104,7 +104,7 @@ def predict(args):
 
         # unbatch (only for MonStereo)
         for idx, (pred, meta) in enumerate(zip(pred_batch, meta_batch)):
-            LOG.info('batch %d: %s', batch_i, meta['file_name'])
+            print('batch %d: %s', batch_i, meta['file_name'])
             pred = preprocess.annotations_inverse(pred, meta)
 
             if args.output_directory is None:
@@ -113,7 +113,7 @@ def predict(args):
             else:
                 file_name = os.path.basename(meta['file_name'])
                 output_path = os.path.join(args.output_directory, 'out_' + file_name)
-            LOG.info('image', batch_i, meta['file_name'], output_path)
+            print('image', batch_i, meta['file_name'], output_path)
 
             if idx == 0:
                 with open(meta_batch[0]['file_name'], 'rb') as f:
