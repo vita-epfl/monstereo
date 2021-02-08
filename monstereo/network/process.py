@@ -1,10 +1,14 @@
 
 import json
 import os
+import logging
 
 import numpy as np
 import torch
 import torchvision
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from ..utils import get_keypoints, pixel_to_camera, to_cartesian, back_correct_angles
 
@@ -67,17 +71,17 @@ def factory_for_gt(im_size, name=None, path_gt=None, verbose=True):
         with open(path_gt, 'r') as f:
             dic_names = json.load(f)
         if verbose:
-            print('-' * 120 + "\nGround-truth file opened")
+            logger.info('-' * 120 + "\nGround-truth file opened")
     except (FileNotFoundError, TypeError):
         if verbose:
-            print('-' * 120 + "\nGround-truth file not found")
+            logger.info('-' * 120 + "\nGround-truth file not found")
         dic_names = {}
 
     try:
         kk = dic_names[name]['K']
         dic_gt = dic_names[name]
         if verbose:
-            print("Matched ground-truth file!")
+            logger.info("Matched ground-truth file!")
     except KeyError:
         dic_gt = None
         x_factor = im_size[0] / 1600
@@ -91,7 +95,7 @@ def factory_for_gt(im_size, name=None, path_gt=None, verbose=True):
                   [0, 1266.4 * pixel_factor, 491.5 * y_factor],
                   [0., 0., 1.]]  # nuScenes calibration
         if verbose:
-            print("Using a standard calibration matrix...")
+            logger.info("Using a standard calibration matrix...")
 
     return kk, dic_gt
 

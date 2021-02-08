@@ -41,7 +41,7 @@ def factory_from_args(args):
         if os.path.exists(OPENPIFPAF_PATH):
             args.checkpoint = OPENPIFPAF_PATH
         else:
-            print("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
+            LOG.info("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
                   "Using a ShuffleNet backbone")
             args.checkpoint = 'shufflenetv2k30'
 
@@ -65,7 +65,7 @@ def factory_from_args(args):
 
     # Make default pifpaf argument
     args.force_complete_pose = True
-    print("Force complete pose is active")
+    LOG.info("Force complete pose is active")
 
     # Configure
     decoder.configure(args)
@@ -113,7 +113,7 @@ def predict(args):
             else:
                 file_name = os.path.basename(meta['file_name'])
                 output_path = os.path.join(args.output_directory, 'out_' + file_name)
-            print('image', batch_i, meta['file_name'], output_path)
+            LOG.info('image', batch_i, meta['file_name'], output_path)
 
             if idx == 0:
                 with open(meta_batch[0]['file_name'], 'rb') as f:
@@ -136,14 +136,14 @@ def predict(args):
             boxes, keypoints = preprocess_pifpaf(pifpaf_outs['left'], im_size, enlarge_boxes=False)
 
             if args.net == 'monoloco_pp':
-                print("Prediction with MonoLoco++")
+                LOG.info("Prediction with MonoLoco++")
                 dic_out = net.forward(keypoints, kk)
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
                 if args.social_distance:
                     dic_out = net.social_distance(dic_out, args)
 
             else:
-                print("Prediction with MonStereo")
+                LOG.info("Prediction with MonStereo")
                 boxes_r, keypoints_r = preprocess_pifpaf(pifpaf_outs['right'], im_size)
                 dic_out = net.forward(keypoints, kk, keypoints_r=keypoints_r)
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
@@ -154,7 +154,7 @@ def predict(args):
 
         # Outputs
         factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=kk)
-        print('Image {}\n'.format(cnt) + '-' * 120)
+        LOG.info('Image {}\n'.format(cnt) + '-' * 120)
         cnt += 1
 
 
@@ -173,7 +173,7 @@ def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
             annotation_painter.annotations(ax, pifpaf_outs['pred'])
 
     elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
-        print(output_path)
+        LOG.info(output_path)
         if args.social_distance:
             show_social(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
         else:
@@ -186,4 +186,4 @@ def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
             json.dump(dic_out, ff)
 
     else:
-        print("No output saved, please select one among front, bird, multi, or pifpaf options")
+        LOG.info("No output saved, please select one among front, bird, multi, or pifpaf options")
