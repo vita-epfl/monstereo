@@ -73,10 +73,10 @@ def factory_for_gt(im_size, focal_length=5.7, name=None, path_gt=None, verbose=T
         with open(path_gt, 'r') as f:
             dic_names = json.load(f)
         if verbose:
-            logger.info('-' * 120 + "{}\n".format("Ground-truth file opened"))
+            logger.info('-' * 120 + "\nGround-truth file opened")
     except (FileNotFoundError, TypeError):
         if verbose:
-            logger.info('-' * 120 + "{}\n".format("Ground-truth file not found"))
+            logger.info('-' * 120 + "\nGround-truth file not found")
         dic_names = {}
 
     try:
