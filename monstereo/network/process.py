@@ -7,10 +7,10 @@ import numpy as np
 import torch
 import torchvision
 
+from ..utils import get_keypoints, pixel_to_camera, to_cartesian, back_correct_angles
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-from ..utils import get_keypoints, pixel_to_camera, to_cartesian, back_correct_angles
 
 BF = 0.54 * 721
 z_min = 4
@@ -73,10 +73,10 @@ def factory_for_gt(im_size, focal_length=5.7, name=None, path_gt=None, verbose=T
         with open(path_gt, 'r') as f:
             dic_names = json.load(f)
         if verbose:
-            logger.info('-' * 120 + "\nGround-truth file opened")
+            logger.info('-' * 120 + "{}\n".format("Ground-truth file opened"))
     except (FileNotFoundError, TypeError):
         if verbose:
-            logger.info('-' * 120 + "\nGround-truth file not found")
+            logger.info('-' * 120 + "{}\n".format("Ground-truth file not found"))
         dic_names = {}
 
     try:
