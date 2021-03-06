@@ -65,6 +65,24 @@ def social_interactions(idx, centers, angles, dds, stds=None, social_distance=Fa
     return False
 
 
+def is_raising_hand(keypoint):
+    """
+    Returns flag of alert if someone raises their hand
+    """
+    l_shoulder = 5
+    l_hand = 9
+    r_shoulder = 6
+    r_hand = 10
+    h_offset = 10
+
+    if ((keypoint[1][l_hand] < keypoint[1][l_shoulder] or
+         keypoint[1][r_hand] < keypoint[1][r_shoulder]) and
+            (keypoint[0][l_hand] - h_offset > keypoint[0][l_shoulder] or
+             keypoint[0][r_hand] + h_offset < keypoint[0][r_shoulder])):
+        return True
+    return False
+
+
 def check_f_formations(idx, idx_t, centers, angles, radii, social_distance=False):
     """
     Check F-formations for people close together (this function do not expect far away people):
@@ -120,6 +138,15 @@ def show_social(args, image_t, output_path, annotations, dic_out):
 
     # Prepare color for social distancing
     colors = ['r' if flag else 'deepskyblue' for flag in dic_out['social_distance']]
+
+    # Prepare color for raising hand with enough distance
+    colors = ['g' if flag else colors[idx] for idx, flag in enumerate(dic_out['raising_hand'])]
+
+    # Prepare color for raising hand without enough distance
+    colors = ['orange' if (close and hand)
+              else colors[idx]
+              for (idx, hand), close in zip(
+                  enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
 
     # Draw keypoints and orientation
     if 'front' in args.output_types:

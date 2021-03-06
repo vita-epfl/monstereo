@@ -42,7 +42,7 @@ def factory_from_args(args):
             args.checkpoint = OPENPIFPAF_PATH
         else:
             LOG.info("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
-                  "Using a ShuffleNet backbone")
+                     "Using a ShuffleNet backbone")
             args.checkpoint = 'shufflenetv2k30'
 
     logger.configure(args, LOG)  # logger first
@@ -142,6 +142,7 @@ def predict(args):
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
                 if args.social_distance:
                     dic_out = net.social_distance(dic_out, args)
+                    dic_out = net.raising_and(dic_out, keypoints)
 
             else:
                 LOG.info("Prediction with MonStereo")
