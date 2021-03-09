@@ -2,6 +2,7 @@
 # File adapted from https://github.com/vita-epfl/openpifpaf
 
 from contextlib import contextmanager
+import math
 
 import numpy as np
 from PIL import Image
@@ -9,6 +10,7 @@ from PIL import Image
 try:
     import matplotlib
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle, FancyArrow
     import scipy.ndimage as ndimage
 except ImportError:
     matplotlib = None
@@ -335,3 +337,92 @@ def white_screen(ax, alpha=0.9):
         plt.Rectangle((0, 0), 1, 1, transform=ax.transAxes, alpha=alpha,
                       facecolor='white')
     )
+
+
+def get_pifpaf_outputs(annotations):
+    # TODO extract direct from predictions with pifpaf 0.11+
+    """Extract keypoints sets and scores from output dictionary"""
+    if not annotations:
+        return [], []
+    keypoints_sets = np.array([dic['keypoints']
+                               for dic in annotations]).reshape((-1, 17, 3))
+    score_weights = np.ones((keypoints_sets.shape[0], 17))
+    score_weights[:, 3] = 3.0
+    score_weights /= np.sum(score_weights[0, :])
+    kps_scores = keypoints_sets[:, :, 2]
+    ordered_kps_scores = np.sort(kps_scores, axis=1)[:, ::-1]
+    scores = np.sum(score_weights * ordered_kps_scores, axis=1)
+    return keypoints_sets, scores
+
+
+def draw_orientation(ax, centers, sizes, angles, colors, mode):
+
+    if mode == 'front':
+        length = 5
+        fill = False
+        alpha = 0.6
+        zorder_circle = 0.5
+        zorder_arrow = 5
+        linewidth = 1.5
+        edgecolor = 'k'
+        radiuses = [s / 1.2 for s in sizes]
+    else:
+        length = 1.3
+        head_width = 0.3
+        linewidth = 2
+        radiuses = [0.2] * len(centers)
+        # length = 1.6
+        # head_width = 0.4
+        # linewidth = 2.7
+        radiuses = [0.2] * len(centers)
+        fill = True
+        alpha = 1
+        zorder_circle = 2
+        zorder_arrow = 1
+
+    for idx, theta in enumerate(angles):
+        color = colors[idx]
+        radius = radiuses[idx]
+
+        if mode == 'front':
+            x_arr = centers[idx][0] + (length + radius) * math.cos(theta)
+            z_arr = length + centers[idx][1] + \
+                (length + radius) * math.sin(theta)
+            delta_x = math.cos(theta)
+            delta_z = math.sin(theta)
+            head_width = max(10, radiuses[idx] / 1.5)
+
+        else:
+            edgecolor = color
+            x_arr = centers[idx][0]
+            z_arr = centers[idx][1]
+            delta_x = length * math.cos(theta)
+            # keep into account kitti convention
+            delta_z = - length * math.sin(theta)
+
+        circle = Circle(centers[idx], radius=radius, color=color,
+                        fill=fill, alpha=alpha, zorder=zorder_circle)
+        arrow = FancyArrow(x_arr, z_arr, delta_x, delta_z, head_width=head_width, edgecolor=edgecolor,
+                           facecolor=color, linewidth=linewidth, zorder=zorder_arrow)
+        ax.add_patch(circle)
+        ax.add_patch(arrow)
+
+
+def social_distance_colors(colors, dic_out):
+    # Prepare color for social distancing
+    colors = ['r' if flag else 'deepskyblue' for flag in dic_out['social_distance']]
+    return colors
+
+
+def raise_hand_colors(colors, dic_out):
+
+    # Prepare color for raising hand with enough distance
+    colors = ['g' if flag else colors[idx] for idx, flag in enumerate(dic_out['raising_hand'])]
+
+    if dic_out['social_distance']:
+        # Prepare color for raising hand without enough distance
+        colors = ['orange' if (close and hand)
+                  else colors[idx]
+                  for (idx, hand), close in zip(
+                       enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
+    return colors

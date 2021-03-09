@@ -92,7 +92,7 @@ def webcam(args):
             data, batch_size=1, shuffle=False,
             pin_memory=False, collate_fn=datasets.collate_images_anns_meta)
 
-        for batch_i, (image_tensors_batch, _, meta_batch) in enumerate(data_loader):
+        for (image_tensors_batch, _, meta_batch) in data_loader:
             pred_batch = processor.batch(
                 model, image_tensors_batch, device=args.device)
 
@@ -167,37 +167,18 @@ class VisualizerMonstereo:
         while True:
             image, dic_out, pifpaf_outs = yield
 
-            # for front -1==0, for bird/multi -1 == 1
-            while axes and (axes[0] and axes[0].patches):
-                if self.args.social_distance:
-                    del axes[0].patches[0]
-                    while len(axes[0].lines) >= 1:
-                        del axes[0].lines[0]
-                    if len(axes) == 2:
-                        if axes[1].patches:
-                            del axes[1].patches[0]
-                            del axes[1].patches[0]  # the one became the 0
-                        while len(axes[1].lines) > 2:
-                            del axes[1].lines[2]
-                        if axes[1].texts:  # in case of no text
-                            del axes[1].texts[0]
-                else:
-                    if axes[0]:
-                        del axes[0].patches[0]
-                        if axes[0].texts:
-                            del axes[0].texts[0]
-                    if len(axes) == 2:
-                        if axes[1].patches:
-                            del axes[1].patches[0]
-                            del axes[1].patches[0]  # the one became the 0
-                        while len(axes[1].lines) > 2:
-                            del axes[1].lines[2]
-                        if axes[1].texts:  # in case of no text
-                            del axes[1].texts[0]
+            # Clears previous annotations between frames
+            axes[0].patches = []
+            axes[0].lines = []
+            axes[0].texts = []
+            axes[1].patches = []
+            axes[1].lines = [axes[1].lines[0], axes[1].lines[1]]
+            axes[1].texts = []
+
             if dic_out:
                 printer._process_results(dic_out)
-                if self.args.social_distance:
-                    printer.draw_social(
+                if self.args.social_distance or self.args.raise_hand:
+                    printer.draw_activities(
                         figures, axes, image, dic_out, pifpaf_outs['left'])
                 else:
                     printer.draw(figures, axes, image)

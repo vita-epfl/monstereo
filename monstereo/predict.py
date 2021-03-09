@@ -21,7 +21,7 @@ from openpifpaf import decoder, network, visualizer, show, logger
 from .visuals.printer import Printer
 from .network import Loco
 from .network.process import factory_for_gt, preprocess_pifpaf
-from .activity import show_social
+from .activity import show_activities, show_social
 
 LOG = logging.getLogger(__name__)
 
@@ -142,7 +142,8 @@ def predict(args):
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
                 if args.social_distance:
                     dic_out = net.social_distance(dic_out, args)
-                    dic_out = net.raising_and(dic_out, keypoints)
+                if args.raise_hand:
+                    dic_out = net.raising_hand(dic_out, keypoints)
 
             else:
                 LOG.info("Prediction with MonStereo")
@@ -176,8 +177,8 @@ def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
 
     elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
         LOG.info(output_path)
-        if args.social_distance:
-            show_social(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
+        if args.social_distance or args.raise_hand:
+            show_activities(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
         else:
             printer = Printer(pifpaf_outs['image'], output_path, kk, args)
             figures, axes = printer.factory_axes(dic_out)
