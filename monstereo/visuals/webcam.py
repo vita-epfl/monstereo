@@ -127,7 +127,9 @@ def webcam(args):
 
         if args.social_distance:
             dic_out = net.social_distance(dic_out, args)
+        if args.raise_hand:
             dic_out = net.raising_hand(dic_out, keypoints)
+
         if visualizer_monstereo is None:  # it is, at the beginning
             visualizer_monstereo = VisualizerMonstereo(kk,
                                                        args)(pil_image)  # create it with the first image

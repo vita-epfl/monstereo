@@ -63,7 +63,8 @@ def cli():
     predict_parser.add_argument('--n_dropout', type=int, help='Epistemic uncertainty evaluation', default=0)
     predict_parser.add_argument('--dropout', type=float, help='dropout parameter', default=0.2)
     predict_parser.add_argument('--show_all', help='only predict ground-truth matches or all', action='store_true')
-    predict_parser.add_argument('--webcam', help='monoloco streaming', action='store_true')
+    predict_parser.add_argument('--webcam', help='monstereo streaming', action='store_true')
+    predict_parser.add_argument('--raise_hand', help='detection of raised hands', action='store_true')
     # Social distancing and social interactions
     predict_parser.add_argument('--social_distance', help='social', action='store_true')
     predict_parser.add_argument('--threshold_prob', type=float, help='concordance for samples', default=0.25)

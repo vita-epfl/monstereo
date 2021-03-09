@@ -250,15 +250,16 @@ class Printer:
         colors = [
             'r' if flag else 'deepskyblue' for flag in dic_out['social_distance']]
 
-        # Prepare color for raising hand with enough distance
-        colors = ['g' if flag else colors[idx]
-                  for idx, flag in enumerate(dic_out['raising_hand'])]
+        if dic_out['raising_hand']:
+            # Prepare color for raising hand with enough distance
+            colors = ['g' if flag else colors[idx]
+                      for idx, flag in enumerate(dic_out['raising_hand'])]
 
-        # Prepare color for raising hand without enough distance
-        colors = ['orange' if (close and hand)
-                  else colors[idx]
-                  for (idx, hand), close in zip(
-                      enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
+            # Prepare color for raising hand without enough distance
+            colors = ['orange' if (close and hand)
+                      else colors[idx]
+                      for (idx, hand), close in zip(
+                          enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
 
         keypoint_sets, _ = get_pifpaf_outputs(annotations)
         keypoint_painter = KeypointPainter(show_box=False, y_scale=self.y_scale)
