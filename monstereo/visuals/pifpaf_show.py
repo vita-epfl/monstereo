@@ -72,12 +72,13 @@ def load_image(path, scale=1.0):
 class KeypointPainter(object):
     def __init__(self, *,
                  skeleton=None,
-                 xy_scale=1.0, highlight=None, highlight_invisible=False,
+                 xy_scale=1.0, y_scale=1.0, highlight=None, highlight_invisible=False,
                  show_box=True, linewidth=2, markersize=3,
                  color_connections=False,
                  solid_threshold=0.5):
         self.skeleton = skeleton or COCO_PERSON_SKELETON
         self.xy_scale = xy_scale
+        self.y_scale = y_scale
         self.highlight = highlight
         self.highlight_invisible = highlight_invisible
         self.show_box = show_box
@@ -181,7 +182,7 @@ class KeypointPainter(object):
         for i, kps in enumerate(np.asarray(keypoint_sets)):
             assert kps.shape[1] == 3
             x = kps[:, 0] * self.xy_scale
-            y = kps[:, 1] * self.xy_scale
+            y = kps[:, 1] * self.xy_scale * self.y_scale
             v = kps[:, 2]
 
             if colors is not None:

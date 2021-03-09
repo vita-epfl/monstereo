@@ -6,8 +6,11 @@ import math
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle, FancyArrow
 
+import numpy as np
+
+from .pifpaf_show import KeypointPainter
 from ..utils import pixel_to_camera
 
 
@@ -18,6 +21,75 @@ def get_angle(xx, zz):
     angle = theta * (180 / math.pi)
 
     return angle
+
+
+def get_pifpaf_outputs(annotations):
+    # TODO extract direct from predictions with pifpaf 0.11+
+    """Extract keypoints sets and scores from output dictionary"""
+    if not annotations:
+        return [], []
+    keypoints_sets = np.array([dic['keypoints']
+                               for dic in annotations]).reshape((-1, 17, 3))
+    score_weights = np.ones((keypoints_sets.shape[0], 17))
+    score_weights[:, 3] = 3.0
+    score_weights /= np.sum(score_weights[0, :])
+    kps_scores = keypoints_sets[:, :, 2]
+    ordered_kps_scores = np.sort(kps_scores, axis=1)[:, ::-1]
+    scores = np.sum(score_weights * ordered_kps_scores, axis=1)
+    return keypoints_sets, scores
+
+
+def draw_orientation(ax, centers, sizes, angles, colors, mode):
+
+    if mode == 'front':
+        length = 5
+        fill = False
+        alpha = 0.6
+        zorder_circle = 0.5
+        zorder_arrow = 5
+        linewidth = 1.5
+        edgecolor = 'k'
+        radiuses = [s / 1.2 for s in sizes]
+    else:
+        length = 1.3
+        head_width = 0.3
+        linewidth = 2
+        radiuses = [0.2] * len(centers)
+        # length = 1.6
+        # head_width = 0.4
+        # linewidth = 2.7
+        radiuses = [0.2] * len(centers)
+        fill = True
+        alpha = 1
+        zorder_circle = 2
+        zorder_arrow = 1
+
+    for idx, theta in enumerate(angles):
+        color = colors[idx]
+        radius = radiuses[idx]
+
+        if mode == 'front':
+            x_arr = centers[idx][0] + (length + radius) * math.cos(theta)
+            z_arr = length + centers[idx][1] + \
+                (length + radius) * math.sin(theta)
+            delta_x = math.cos(theta)
+            delta_z = math.sin(theta)
+            head_width = max(10, radiuses[idx] / 1.5)
+
+        else:
+            edgecolor = color
+            x_arr = centers[idx][0]
+            z_arr = centers[idx][1]
+            delta_x = length * math.cos(theta)
+            # keep into account kitti convention
+            delta_z = - length * math.sin(theta)
+
+        circle = Circle(centers[idx], radius=radius, color=color,
+                        fill=fill, alpha=alpha, zorder=zorder_circle)
+        arrow = FancyArrow(x_arr, z_arr, delta_x, delta_z, head_width=head_width, edgecolor=edgecolor,
+                           facecolor=color, linewidth=linewidth, zorder=zorder_arrow)
+        ax.add_patch(circle)
+        ax.add_patch(arrow)
 
 
 def image_attributes(dpi, output_types):
@@ -62,6 +134,7 @@ class Printer:
         self.show_all = args.show_all
         self.show = args.show_all
         self.save = not args.no_save
+        self.plt_close = not args.webcam
 
         # define image attributes
         self.attr = image_attributes(args.dpi, args.output_types)
@@ -107,7 +180,8 @@ class Printer:
         figures = []
 
         # Process the annotation dictionary of monoloco
-        self._process_results(dic_out)
+        if dic_out:
+            self._process_results(dic_out)
 
         #  Initialize multi figure, resizing it for aesthetic proportion
         if 'multi' in self.output_types:
@@ -165,6 +239,82 @@ class Printer:
             axes.append(ax1)
         return figures, axes
 
+
+    def draw_social(self, figures, axes, image, dic_out, annotations):
+
+        angles = dic_out['angles']
+        sizes = [abs(dic_out['uv_heads'][idx][1] - uv_s[1]) / 1.5 for idx, uv_s in
+                 enumerate(dic_out['uv_shoulders'])]
+
+        # Prepare color for social distancing
+        colors = [
+            'r' if flag else 'deepskyblue' for flag in dic_out['social_distance']]
+
+        # Prepare color for raising hand with enough distance
+        colors = ['g' if flag else colors[idx]
+                  for idx, flag in enumerate(dic_out['raising_hand'])]
+
+        # Prepare color for raising hand without enough distance
+        colors = ['orange' if (close and hand)
+                  else colors[idx]
+                  for (idx, hand), close in zip(
+                      enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
+
+        keypoint_sets, _ = get_pifpaf_outputs(annotations)
+        keypoint_painter = KeypointPainter(show_box=False, y_scale=self.y_scale)
+
+        # whether to include instances that don't match the ground-truth
+        iterator = range(len(self.zz_pred)) if self.show_all else range(
+            len(self.zz_gt))
+        if not iterator:
+            print("-" * 110 + '\n' + "! No instances detected, be sure to include file with ground-truth values or "
+                                     "use the command --show_all" + '\n' + "-" * 110)
+
+        centers = dic_out['uv_heads']
+        if 'multi' in self.output_types:
+            for c in centers:
+                c[1] = c[1] * self.y_scale
+
+        # Draw the front figure
+        number = dict(flag=False, num=97)
+        if any(xx in self.output_types for xx in ['front', 'multi']):
+            number['flag'] = True  # add numbers
+            self.mpl_im0.set_data(image)
+        for idx in iterator:
+            if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
+                keypoint_painter.keypoints(
+                    axes[0], keypoint_sets, colors=colors)
+                draw_orientation(axes[0], dic_out['uv_heads'],
+                                 sizes, angles, colors, mode='front')
+                number['num'] += 1
+
+        xz_centers = [[xx[0], xx[2]] for xx in dic_out['xyz_pred']]
+        # Draw the bird figure
+        number['num'] = 97
+        for idx in iterator:
+            if any(xx in self.output_types for xx in ['bird', 'multi']) and self.zz_pred[idx] > 0:
+
+                draw_orientation(axes[1], xz_centers, [
+                ], angles, colors, mode='bird')
+                # Draw ground truth and uncertainty
+                self._draw_uncertainty(axes, idx)
+
+                # Draw bird eye view text
+                if number['flag']:
+                    self._draw_text_bird(axes, idx, number['num'])
+                    number['num'] += 1
+        self._draw_legend(axes)
+
+        # Draw, save or/and show the figures
+        for idx, fig in enumerate(figures):
+            fig.canvas.draw()
+            if self.save:
+                fig.savefig(
+                    self.output_path + self.extensions[idx], bbox_inches='tight', dpi=self.attr['dpi'])
+            if self.show:
+                fig.show()
+
+
     def draw(self, figures, axes, image):
 
         # whether to include instances that don't match the ground-truth
@@ -207,7 +357,8 @@ class Printer:
                 fig.savefig(self.output_path + self.extensions[idx], bbox_inches='tight', dpi=self.attr['dpi'])
             if self.show:
                 fig.show()
-            plt.close(fig)
+            if self.plt_close:
+                plt.close(fig)
 
     def _draw_front(self, ax, z, idx, number):
 
