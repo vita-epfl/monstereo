@@ -140,10 +140,11 @@ def predict(args):
                 LOG.info("Prediction with MonoLoco++")
                 dic_out = net.forward(keypoints, kk)
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
-                if 'social_distance' in args.activities:
-                    dic_out = net.social_distance(dic_out, args)
-                if 'raise_hand' in args.activities:
-                    dic_out = net.raising_hand(dic_out, keypoints)
+                if args.activities:
+                    if 'social_distance' in args.activities:
+                        dic_out = net.social_distance(dic_out, args)
+                    if 'raise_hand' in args.activities:
+                        dic_out = net.raising_hand(dic_out, keypoints)
 
             else:
                 LOG.info("Prediction with MonStereo")
