@@ -410,7 +410,7 @@ def draw_orientation(ax, centers, sizes, angles, colors, mode):
 
 def social_distance_colors(colors, dic_out):
     # Prepare color for social distancing
-    colors = ['r' if flag else 'deepskyblue' for flag in dic_out['social_distance']]
+    colors = ['r' if flag else colors[idx] for idx,flag in enumerate(dic_out['social_distance'])]
     return colors
 
 

@@ -60,9 +60,9 @@ class Printer:
         self.kk = kk
         self.output_types = args.output_types
         self.z_max = args.z_max  # set max distance to show instances
-        self.show_all = args.show_all
-        self.show = args.show_all
-        self.save = not args.no_save
+        self.show_all = args.show_all or args.webcam
+        self.show = args.show_all or args.webcam
+        self.save = not args.no_save and not args.webcam
         self.plt_close = not args.webcam
         self.args = args
 
@@ -71,12 +71,14 @@ class Printer:
 
     def _process_results(self, dic_ann):
         # Include the vectors inside the interval given by z_max
+        self.angles = dic_ann['angles']
         self.stds_ale = dic_ann['stds_ale']
         self.stds_epi = dic_ann['stds_epi']
         self.gt = dic_ann['gt']  # regulate ground-truth matching
         self.xx_gt = [xx[0] for xx in dic_ann['xyz_real']]
         self.xx_pred = [xx[0] for xx in dic_ann['xyz_pred']]
 
+        self.xz_centers = [[xx[0], xx[2]] for xx in dic_ann['xyz_pred']]
         # Set maximum distance
         self.dd_pred = dic_ann['dds_pred']
         self.dd_real = dic_ann['dds_real']
@@ -170,76 +172,31 @@ class Printer:
         return figures, axes
 
 
-    def draw_activities(self, figures, axes, image, dic_out, annotations):
-
-        angles = dic_out['angles']
-        sizes = [abs(dic_out['uv_heads'][idx][1] - uv_s[1]) / 1.5 for idx, uv_s in
-                 enumerate(dic_out['uv_shoulders'])]
-
-        colors = ['deepskyblue' for _ in dic_out['uv_heads']]
-        if 'social_distance' in self.args.activities:
-            colors = social_distance_colors(colors, dic_out)
-        if 'raise_hand' in self.args.activities:
-            colors = raise_hand_colors(colors, dic_out)
+    def social_distance_front(self, axis, colors, annotations):
+        sizes = [abs(self.uv_heads[idx][1] - uv_s[1]) / 1.5 for idx, uv_s in
+                 enumerate(self.uv_shoulders)]
 
         keypoint_sets, _ = get_pifpaf_outputs(annotations)
         keypoint_painter = KeypointPainter(show_box=False, y_scale=self.y_scale)
 
-        # whether to include instances that don't match the ground-truth
-        iterator = range(len(self.zz_pred)) if self.show_all else range(
-            len(self.zz_gt))
-        if not iterator:
-            print("-" * 110 + '\n' + "! No instances detected, be sure to include file with ground-truth values or "
-                                     "use the command --show_all" + '\n' + "-" * 110)
-
-        centers = dic_out['uv_heads']
-        if 'multi' in self.output_types:
-            for c in centers:
-                c[1] = c[1] * self.y_scale
-
-        # Draw the front figure
-        number = dict(flag=False, num=97)
-        if any(xx in self.output_types for xx in ['front', 'multi']):
-            number['flag'] = True  # add numbers
-            self.mpl_im0.set_data(image)
-        for idx in iterator:
-            if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
-                keypoint_painter.keypoints(
-                    axes[0], keypoint_sets, colors=colors)
-                draw_orientation(axes[0], dic_out['uv_heads'],
-                                 sizes, angles, colors, mode='front')
-                number['num'] += 1
-
-        xz_centers = [[xx[0], xx[2]] for xx in dic_out['xyz_pred']]
-        # Draw the bird figure
-        number['num'] = 97
-        for idx in iterator:
-            if any(xx in self.output_types for xx in ['bird', 'multi']) and self.zz_pred[idx] > 0:
-
-                draw_orientation(axes[1], xz_centers, [
-                ], angles, colors, mode='bird')
-                # Draw ground truth and uncertainty
-                self._draw_uncertainty(axes, idx)
-
-                # Draw bird eye view text
-                if number['flag']:
-                    self._draw_text_bird(axes, idx, number['num'])
-                    number['num'] += 1
-        self._draw_legend(axes)
-
-        # Draw, save or/and show the figures
-        for idx, fig in enumerate(figures):
-            fig.canvas.draw()
-            if self.save:
-                fig.savefig(
-                    self.output_path + self.extensions[idx], bbox_inches='tight', dpi=self.attr['dpi'])
-            if self.show:
-                fig.show()
-            if self.plt_close:
-                plt.close(fig)
+        keypoint_painter.keypoints(
+            axis, keypoint_sets, colors=colors)
+        draw_orientation(axis, self.uv_heads,
+                             sizes, self.angles, colors, mode='front')
 
 
-    def draw(self, figures, axes, image):
+    def social_distance_bird(self, axis, colors):
+        draw_orientation(axis, self.xz_centers, [], self.angles, colors, mode='bird')
+
+
+    def draw(self, figures, axes, image, dic_out, annotations):
+
+        if self.args.activities:
+            colors = ['deepskyblue' for _ in self.uv_heads]
+            if 'social_distance' in self.args.activities:
+                colors = social_distance_colors(colors, dic_out)
+            if 'raise_hand' in self.args.activities:
+                colors = raise_hand_colors(colors, dic_out)
 
         # whether to include instances that don't match the ground-truth
         iterator = range(len(self.zz_pred)) if self.show_all else range(len(self.zz_gt))
@@ -254,10 +211,14 @@ class Printer:
             self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
-                self._draw_front(axes[0],
-                                 self.dd_pred[idx],
-                                 idx,
-                                 number)
+                if self.args.activities:
+                    if 'social_distance' in self.args.activities:
+                        self.social_distance_front(axes[0], colors, annotations)
+                else:
+                    self._draw_front(axes[0],
+                                     self.dd_pred[idx],
+                                     idx,
+                                     number)
                 number['num'] += 1
 
         # Draw the bird figure
@@ -265,6 +226,9 @@ class Printer:
         for idx in iterator:
             if any(xx in self.output_types for xx in ['bird', 'multi']) and self.zz_pred[idx] > 0:
 
+                if self.args.activities:
+                    if 'social_distance' in self.args.activities:
+                        self.social_distance_bird(axes[1], colors)
                 # Draw ground truth and uncertainty
                 self._draw_uncertainty(axes, idx)
 
@@ -283,6 +247,7 @@ class Printer:
                 fig.show()
             if self.plt_close:
                 plt.close(fig)
+
 
     def _draw_front(self, ax, z, idx, number):
 

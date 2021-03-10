@@ -172,17 +172,14 @@ class VisualizerMonstereo:
             axes[0].patches = []
             axes[0].lines = []
             axes[0].texts = []
-            axes[1].patches = []
-            axes[1].lines = [axes[1].lines[0], axes[1].lines[1]]
-            axes[1].texts = []
+            if len(axes) > 1:
+                axes[1].patches = []
+                axes[1].lines = [axes[1].lines[0], axes[1].lines[1]]
+                axes[1].texts = []
 
             if dic_out:
                 printer._process_results(dic_out)
-                if self.args.activities:
-                    printer.draw_activities(
-                        figures, axes, image, dic_out, pifpaf_outs['left'])
-                else:
-                    printer.draw(figures, axes, image)
+                printer.draw(figures, axes, image, dic_out, pifpaf_outs['left'])
                 mypause(0.01)
 
 
