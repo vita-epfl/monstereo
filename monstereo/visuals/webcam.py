@@ -125,9 +125,9 @@ def webcam(args):
         dic_out = net.forward(keypoints, kk)
         dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
 
-        if args.social_distance:
+        if 'social_distance' in args.activities:
             dic_out = net.social_distance(dic_out, args)
-        if args.raise_hand:
+        if 'raise_hand' in args.activities:
             dic_out = net.raising_hand(dic_out, keypoints)
 
         if visualizer_monstereo is None:  # it is, at the beginning
@@ -177,7 +177,7 @@ class VisualizerMonstereo:
 
             if dic_out:
                 printer._process_results(dic_out)
-                if self.args.social_distance or self.args.raise_hand:
+                if self.args.activities:
                     printer.draw_activities(
                         figures, axes, image, dic_out, pifpaf_outs['left'])
                 else:

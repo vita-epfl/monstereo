@@ -132,9 +132,9 @@ def show_activities(args, image_t, output_path, annotations, dic_out):
     assert 'front' in args.output_types or 'bird' in args.output_types, "outputs allowed: front and/or bird"
 
     colors = ['deepskyblue' for _ in dic_out['uv_heads']]
-    if args.social_distance:
+    if 'social_distance' in args.activities:
         colors = social_distance_colors(colors, dic_out)
-    if args.raise_hand:
+    if 'raise_hand' in args.activities:
         colors = raise_hand_colors(colors, dic_out)
 
     angles = dic_out['angles']

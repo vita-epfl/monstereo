@@ -53,6 +53,7 @@ def cli():
     predict_parser.add_argument('--scale', default=1.0, type=float, help='change the scale of the image to preprocess')
 
     # Monoloco
+    predict_parser.add_argument('--activities', nargs='+', help='Choose activities to show: social_distance, raise_hand')
     predict_parser.add_argument('--net', help='Choose network: monoloco, monoloco_p, monoloco_pp, monstereo')
     predict_parser.add_argument('--model', help='path of MonoLoco model to load', required=True)
     predict_parser.add_argument('--hidden_size', type=int, help='Number of hidden units in the model', default=512)

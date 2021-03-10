@@ -177,9 +177,9 @@ class Printer:
                  enumerate(dic_out['uv_shoulders'])]
 
         colors = ['deepskyblue' for _ in dic_out['uv_heads']]
-        if self.args.social_distance:
+        if 'social_distance' in self.args.activities:
             colors = social_distance_colors(colors, dic_out)
-        if self.args.raise_hand:
+        if 'raise_hand' in self.args.activities:
             colors = raise_hand_colors(colors, dic_out)
 
         keypoint_sets, _ = get_pifpaf_outputs(annotations)
