@@ -1,8 +1,11 @@
 # Perceiving Humans in 3D
 
 This repository contains the code for two research projects:
-   
-1.  **Perceiving Humans: from Monocular 3D Localization to Social Distancing (MonoLoco++)**         
+
+**1)** 
+ > __Perceiving Humans: from Monocular 3D Localization to Social Distancing (MonoLoco++)__<br />
+ > _[Lorenzo Bertoni](https://scholar.google.com/citations?user=f-4YHeMAAAAJ&hl=en), [Sven Kreiss](https://www.svenkreiss.com),  [Alexandre Alahi](https://scholar.google.com/citations?user=UIhXQ64AAAAJ&hl=en)_, 2021.
+
  [README](https://github.com/vita-epfl/monstereo/blob/master/docs/MonoLoco%2B%2B.md) & [Article](https://arxiv.org/abs/2009.00984)
  
     ![social distancing](docs/social_distancing.jpg)
@@ -10,7 +13,10 @@ This repository contains the code for two research projects:
     ![monoloco_pp](docs/truck.jpg)
  
  
-2.  **MonStereo: When Monocular and Stereo Meet at the Tail of 3D Human Localization**   
+**2)**   
+> __MonStereo: When Monocular and Stereo Meet at the Tail of 3D Human Localization__<br />
+ > _[Lorenzo Bertoni](https://scholar.google.com/citations?user=f-4YHeMAAAAJ&hl=en), [Sven Kreiss](https://www.svenkreiss.com), [Taylor Mordan](https://people.epfl.ch/taylor.mordan/?lang=en), [Alexandre Alahi](https://scholar.google.com/citations?user=UIhXQ64AAAAJ&hl=en)_, ICRA 2021.
+
 [README](https://github.com/vita-epfl/monstereo/blob/master/docs/MonStereo.md) & [Article](https://arxiv.org/abs/2008.10913)
      
      ![monstereo 1](docs/000840_multi.jpg)
