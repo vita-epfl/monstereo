@@ -90,13 +90,18 @@ class KeypointPainter(object):
         self.solid_threshold = solid_threshold
         self.dashed_threshold = 0.1  # Patch to still allow force complete pose (set to zero to resume original)
 
-    def _draw_skeleton(self, ax, x, y, v, *, color=None):
+    def _draw_skeleton(self, ax, x, y, v, *, color=None, raise_hand='none'):
         if not np.any(v > 0):
             return
 
         if self.skeleton is not None:
             for ci, connection in enumerate(np.array(self.skeleton) - 1):
                 c = color
+                if ((connection[0] == 5 and connection[1] == 7) or (connection[0] == 7 and connection[1] == 9)) and raise_hand in ['left','both']:
+                    c = 'chartreuse'
+                if ((connection[0] == 6 and connection[1] == 8) or (connection[0] == 8 and connection[1] == 10)) and raise_hand in ['right', 'both']:
+                    c = 'chartreuse'
+
                 if self.color_connections:
                     c = matplotlib.cm.get_cmap('tab20')(ci / len(self.skeleton))
                 if np.all(v[connection] > self.dashed_threshold):
@@ -172,7 +177,7 @@ class KeypointPainter(object):
                 matplotlib.patches.Rectangle(
                     (x - scale, y - scale), 2 * scale, 2 * scale, fill=False, color=color))
 
-    def keypoints(self, ax, keypoint_sets, *, scores=None, color=None, colors=None, texts=None):
+    def keypoints(self, ax, keypoint_sets, *, scores=None, color=None, colors=None, texts=None, raise_hand='none'):
         if keypoint_sets is None:
             return
 
@@ -193,7 +198,7 @@ class KeypointPainter(object):
             if isinstance(color, (int, np.integer)):
                 color = matplotlib.cm.get_cmap('tab20')((color % 20 + 0.05) / 20)
 
-            self._draw_skeleton(ax, x, y, v, color=color)
+            self._draw_skeleton(ax, x, y, v, color=color, raise_hand=raise_hand[:][i])
             if self.show_box:
                 score = scores[i] if scores is not None else None
                 self._draw_box(ax, x, y, v, color, score)
@@ -417,11 +422,11 @@ def social_distance_colors(colors, dic_out):
 def raise_hand_colors(colors, dic_out):
 
     # Prepare color for raising hand with enough distance
-    colors = ['g' if flag else colors[idx] for idx, flag in enumerate(dic_out['raising_hand'])]
+    colors = ['g' if flag in ['left', 'right', 'both'] else colors[idx] for idx, flag in enumerate(dic_out['raising_hand'])]
 
     if dic_out['social_distance']:
         # Prepare color for raising hand without enough distance
-        colors = ['orange' if (close and hand)
+        colors = ['orange' if (close and (hand in ['left', 'right', 'both']))
                   else colors[idx]
                   for (idx, hand), close in zip(
                        enumerate(dic_out['raising_hand']), dic_out['social_distance'])]

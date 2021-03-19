@@ -254,7 +254,7 @@ class Loco:
 
     @staticmethod
     def raising_hand(dic_out, keypoints):
-        dic_out['raising_hand'] = [bool(is_raising_hand(keypoint)) for keypoint in keypoints]
+        dic_out['raising_hand'] = [is_raising_hand(keypoint) for keypoint in keypoints]
         return dic_out
 
 

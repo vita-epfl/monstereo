@@ -74,12 +74,19 @@ def is_raising_hand(keypoint):
     r_hand = 10
     h_offset = 10
 
-    if ((keypoint[1][l_hand] < keypoint[1][l_shoulder] or
+    if ((keypoint[1][l_hand] < keypoint[1][l_shoulder] and
          keypoint[1][r_hand] < keypoint[1][r_shoulder]) and
-            (keypoint[0][l_hand] - h_offset > keypoint[0][l_shoulder] or
+            (keypoint[0][l_hand] - h_offset > keypoint[0][l_shoulder] and
              keypoint[0][r_hand] + h_offset < keypoint[0][r_shoulder])):
-        return True
-    return False
+        return 'both'
+
+    if (keypoint[1][l_hand] < keypoint[1][l_shoulder]) and (keypoint[0][l_hand] - h_offset > keypoint[0][l_shoulder]):
+        return 'left'
+
+    if keypoint[1][r_hand] < keypoint[1][r_shoulder] and keypoint[0][r_hand] + h_offset < keypoint[0][r_shoulder]:
+        return 'right'
+
+    return 'none'
 
 
 def check_f_formations(idx, idx_t, centers, angles, radii, social_distance=False):

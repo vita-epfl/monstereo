@@ -110,7 +110,6 @@ def webcam(args):
         if not ret:
             break
         key = cv2.waitKey(1)
-
         if key % 256 == 27:
             # ESC pressed
             print("Escape hit, closing...")
@@ -130,7 +129,6 @@ def webcam(args):
                 dic_out = net.social_distance(dic_out, args)
             if 'raise_hand' in args.activities:
                 dic_out = net.raising_hand(dic_out, keypoints)
-
         if visualizer_monstereo is None:  # it is, at the beginning
             visualizer_monstereo = VisualizerMonstereo(kk,
                                                        args)(pil_image)  # create it with the first image

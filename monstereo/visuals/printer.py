@@ -91,6 +91,10 @@ class Printer:
                         for idx, xx in enumerate(dic_ann['xyz_pred'])]
 
         self.uv_heads = dic_ann['uv_heads']
+        self.centers = self.uv_heads
+        if 'multi' in self.output_types:
+            for center in self.centers:
+                center[1] = center[1] * self.y_scale
         self.uv_shoulders = dic_ann['uv_shoulders']
         self.boxes = dic_ann['boxes']
         self.boxes_gt = dic_ann['boxes_gt']
@@ -172,16 +176,18 @@ class Printer:
         return figures, axes
 
 
-    def social_distance_front(self, axis, colors, annotations):
-        sizes = [abs(self.uv_heads[idx][1] - uv_s[1]) / 1.5 for idx, uv_s in
+    def social_distance_front(self, axis, colors, annotations, dic_out):
+        sizes = [abs(self.centers[idx][1] - uv_s[1]*self.y_scale) / 1.5 for idx, uv_s in
                  enumerate(self.uv_shoulders)]
 
         keypoint_sets, _ = get_pifpaf_outputs(annotations)
         keypoint_painter = KeypointPainter(show_box=False, y_scale=self.y_scale)
-
+        r_h = 'none'
+        if 'raise_hand' in self.args.activities:
+            r_h = dic_out['raising_hand']
         keypoint_painter.keypoints(
-            axis, keypoint_sets, colors=colors)
-        draw_orientation(axis, self.uv_heads,
+            axis, keypoint_sets, colors=colors, raise_hand=r_h)
+        draw_orientation(axis, self.centers,
                              sizes, self.angles, colors, mode='front')
 
 
@@ -203,7 +209,6 @@ class Printer:
         if not iterator:
             print("-" * 110 + '\n' + "! No instances detected, be sure to include file with ground-truth values or "
                                      "use the command --show_all" + '\n' + "-" * 110)
-
         # Draw the front figure
         number = dict(flag=False, num=97)
         if any(xx in self.output_types for xx in ['front', 'multi']):
@@ -213,7 +218,7 @@ class Printer:
             if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
                 if self.args.activities:
                     if 'social_distance' in self.args.activities:
-                        self.social_distance_front(axes[0], colors, annotations)
+                        self.social_distance_front(axes[0], colors, annotations, dic_out)
                 else:
                     self._draw_front(axes[0],
                                      self.dd_pred[idx],
