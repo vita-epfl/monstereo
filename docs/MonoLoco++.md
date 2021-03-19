@@ -109,6 +109,21 @@ For more info, run:
 MonoLoco++ estimates orientation and box dimensions as well. Results are saved in a json file when using the command 
 `--output_types json`. At the moment, the only visualization including orientation is the social distancing one.
 
+## Webcam
+MonoLoco++ can run on personal computers with only CPU and low resolution images (e.g. 256x144) at ~2fps with the `--webcam` tag. It support 3 types of visualizations: front, bird and multi. Multiple visualizations can be combined in different windows. 
+By default, while using the webcam the `--z_max` is set to 10 and the `--show_all` option is enabled, this is recommended due to the short distance of the subjects in this use case.
+The resolution can be adjusted with the `--scale` tag, by default it is set to 0.2 to keep the framerate at ~2fps.
+
+### Activities
+Using the webcam, different activities can be displayed (such as social distance or risen hand detection) using the tag `--activities` e.g. : 
+```
+python -m monstereo.run predict \
+--webcam \
+--activities social_distance raise_hand \
+--output_types multi \
+--model data/models/monoloco_pp-201203-1424.pkl
+```
+
 ## Preprocessing
 
 ### Kitti
