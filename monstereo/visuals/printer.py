@@ -7,8 +7,9 @@ from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.widgets import Button
 
-from .pifpaf_show import KeypointPainter, get_pifpaf_outputs, draw_orientation, raise_hand_colors, social_distance_colors
+from .pifpaf_show import KeypointPainter, get_pifpaf_outputs, draw_orientation, social_distance_colors
 from ..utils import pixel_to_camera
 
 
@@ -139,6 +140,7 @@ class Printer:
 
             fig, (ax0, ax1) = plt.subplots(1, 2, sharey=False, gridspec_kw={'width_ratios': [width_ratio, 1]},
                                            figsize=(fig_width, fig_height))
+           
             ax1.set_aspect(fig_ar_1)
             fig.set_tight_layout(True)
             fig.subplots_adjust(left=0.02, right=0.98, bottom=0, top=1, hspace=0, wspace=0.02)
@@ -186,7 +188,7 @@ class Printer:
         if 'raise_hand' in self.args.activities:
             r_h = dic_out['raising_hand']
         keypoint_painter.keypoints(
-            axis, keypoint_sets, colors=colors, raise_hand=r_h)
+            axis, keypoint_sets, scores=self.dd_pred,colors=colors, raise_hand=r_h)
         draw_orientation(axis, self.centers,
                              sizes, self.angles, colors, mode='front')
 
@@ -194,15 +196,12 @@ class Printer:
     def social_distance_bird(self, axis, colors):
         draw_orientation(axis, self.xz_centers, [], self.angles, colors, mode='bird')
 
-
     def draw(self, figures, axes, image, dic_out, annotations):
 
         if self.args.activities:
             colors = ['deepskyblue' for _ in self.uv_heads]
             if 'social_distance' in self.args.activities:
                 colors = social_distance_colors(colors, dic_out)
-            if 'raise_hand' in self.args.activities:
-                colors = raise_hand_colors(colors, dic_out)
 
         # whether to include instances that don't match the ground-truth
         iterator = range(len(self.zz_pred)) if self.show_all else range(len(self.zz_gt))
@@ -213,11 +212,14 @@ class Printer:
         number = dict(flag=False, num=97)
         if any(xx in self.output_types for xx in ['front', 'multi']):
             number['flag'] = True  # add numbers
-            self.mpl_im0.set_data(image)
+            if not self.args.activities or 'social_distance' not in self.args.activities:
+                self.mpl_im0.set_data(image)
         for idx in iterator:
             if any(xx in self.output_types for xx in ['front', 'multi']) and self.zz_pred[idx] > 0:
                 if self.args.activities:
                     if 'social_distance' in self.args.activities:
+                        self.social_distance_front(axes[0], colors, annotations, dic_out)
+                    elif 'raise_hand' in self.args.activities:
                         self.social_distance_front(axes[0], colors, annotations, dic_out)
                 else:
                     self._draw_front(axes[0],
@@ -253,6 +255,7 @@ class Printer:
             if self.plt_close:
                 plt.close(fig)
 
+    
 
     def _draw_front(self, ax, z, idx, number):
 
@@ -406,7 +409,8 @@ class Printer:
             ax.set_axis_off()
             ax.set_xlim(0, self.width)
             ax.set_ylim(self.height, 0)
-            self.mpl_im0 = ax.imshow(self.im)
+            if not self.args.activities or 'social_distance' not in self.args.activities:
+                self.mpl_im0 = ax.imshow(self.im)
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
 

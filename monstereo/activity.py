@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from .network.process import laplace_sampling
-from .visuals.pifpaf_show import KeypointPainter, image_canvas, get_pifpaf_outputs, draw_orientation, social_distance_colors, raise_hand_colors
+from .visuals.pifpaf_show import KeypointPainter, image_canvas, get_pifpaf_outputs, draw_orientation, social_distance_colors
 
 
 def social_interactions(idx, centers, angles, dds, stds=None, social_distance=False,
@@ -141,8 +141,6 @@ def show_activities(args, image_t, output_path, annotations, dic_out):
     colors = ['deepskyblue' for _ in dic_out['uv_heads']]
     if 'social_distance' in args.activities:
         colors = social_distance_colors(colors, dic_out)
-    if 'raise_hand' in args.activities:
-        colors = raise_hand_colors(colors, dic_out)
 
     angles = dic_out['angles']
     stds = dic_out['stds_ale']
@@ -156,12 +154,16 @@ def show_activities(args, image_t, output_path, annotations, dic_out):
                  enumerate(dic_out['uv_shoulders'])]
         keypoint_painter = KeypointPainter(show_box=False)
 
+        r_h = 'none'
+        if 'raise_hand' in args.activities:
+            r_h = dic_out['raising_hand']
+
         with image_canvas(image_t,
                           output_path + '.front.png',
                           show=args.show,
                           fig_width=10,
                           dpi_factor=1.0) as ax:
-            keypoint_painter.keypoints(ax, keypoint_sets, colors=colors)
+            keypoint_painter.keypoints(ax, keypoint_sets, colors=colors, raise_hand=r_h)
             draw_orientation(ax, uv_centers, sizes, angles, colors, mode='front')
 
     if 'bird' in args.output_types:

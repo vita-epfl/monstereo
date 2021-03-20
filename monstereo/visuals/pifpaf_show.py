@@ -97,20 +97,22 @@ class KeypointPainter(object):
         if self.skeleton is not None:
             for ci, connection in enumerate(np.array(self.skeleton) - 1):
                 c = color
+                linewidth=self.linewidth
                 if ((connection[0] == 5 and connection[1] == 7) or (connection[0] == 7 and connection[1] == 9)) and raise_hand in ['left','both']:
-                    c = 'chartreuse'
+                    c = 'yellow'
+                    linewidth = np.sqrt((x[9]-x[7])**2 + (y[9]-y[7])**2)
                 if ((connection[0] == 6 and connection[1] == 8) or (connection[0] == 8 and connection[1] == 10)) and raise_hand in ['right', 'both']:
-                    c = 'chartreuse'
-
+                    c = 'yellow'
+                    linewidth = np.sqrt((x[9]-x[7])**2 + (y[9]-y[7])**2)
                 if self.color_connections:
                     c = matplotlib.cm.get_cmap('tab20')(ci / len(self.skeleton))
                 if np.all(v[connection] > self.dashed_threshold):
                     ax.plot(x[connection], y[connection],
-                            linewidth=self.linewidth, color=c,
+                            linewidth=linewidth, color=c,
                             linestyle='dashed', dash_capstyle='round')
                 if np.all(v[connection] > self.solid_threshold):
                     ax.plot(x[connection], y[connection],
-                            linewidth=self.linewidth, color=c, solid_capstyle='round')
+                            linewidth=linewidth, color=c, solid_capstyle='round')
 
         # highlight invisible keypoints
         inv_color = 'k' if self.highlight_invisible else color
@@ -199,6 +201,10 @@ class KeypointPainter(object):
                 color = matplotlib.cm.get_cmap('tab20')((color % 20 + 0.05) / 20)
 
             self._draw_skeleton(ax, x, y, v, color=color, raise_hand=raise_hand[:][i])
+            score = scores[i] if scores is not None else None
+            z_str = str(score).split(sep='.')
+            text = z_str[0] + '.' + z_str[1][0]
+            self._draw_text(ax, x-2, y, v, text, color)
             if self.show_box:
                 score = scores[i] if scores is not None else None
                 self._draw_box(ax, x, y, v, color, score)
@@ -418,16 +424,3 @@ def social_distance_colors(colors, dic_out):
     colors = ['r' if flag else colors[idx] for idx,flag in enumerate(dic_out['social_distance'])]
     return colors
 
-
-def raise_hand_colors(colors, dic_out):
-
-    # Prepare color for raising hand with enough distance
-    colors = ['g' if flag in ['left', 'right', 'both'] else colors[idx] for idx, flag in enumerate(dic_out['raising_hand'])]
-
-    if dic_out['social_distance']:
-        # Prepare color for raising hand without enough distance
-        colors = ['orange' if (close and (hand in ['left', 'right', 'both']))
-                  else colors[idx]
-                  for (idx, hand), close in zip(
-                       enumerate(dic_out['raising_hand']), dic_out['social_distance'])]
-    return colors
