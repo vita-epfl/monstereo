@@ -6,7 +6,8 @@
 [T. Mordan](https://people.epfl.ch/taylor.mordan/?lang=en), [A. Alahi](https://scholar.google.com/citations?user=UIhXQ64AAAAJ&hl=en)_, ICRA 2021 <br /> 
 __[Code](https://github.com/vita-epfl/monoloco)__  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; __[Article](https://arxiv.org/abs/2008.10913)__  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;   __[Citation](###Citation)__   &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; __[Video](#Todo)__
      
-
+---
+<br >
 This project has migrated into the **[monoloco library](https://github.com/vita-epfl/monoloco)**, a single library that supports not only stereo 3D localization, but also monocular detections, social distancing and body orientation. Check it out!
 
 <img src="docs/monoloco.gif" alt="gif" />
