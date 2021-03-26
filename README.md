@@ -7,8 +7,9 @@
 __[Code](https://github.com/vita-epfl/monoloco)__  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; __[Article](https://arxiv.org/abs/2008.10913)__  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;   __[Citation](###Citation)__   &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; __[Video](https://www.youtube.com/watch?v=pGssROjckHU)__
      
 ---
-<br >
-This project has migrated into the **[monoloco library](https://github.com/vita-epfl/monoloco)**, a single library that supports not only stereo 3D localization, but also monocular detections, social distancing and body orientation. Check it out!
+<br />
+
+This project has migrated into the __[monoloco library](https://github.com/vita-epfl/monoloco)__, a single library that supports not only stereo 3D localization, but also monocular detections, social distancing and body orientation. Check it out!
 
 <img src="docs/monoloco.gif" alt="gif" />
 
