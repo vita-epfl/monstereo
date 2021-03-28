@@ -21,7 +21,7 @@ from openpifpaf import decoder, network, visualizer, show, logger
 from .visuals.printer import Printer
 from .network import Loco
 from .network.process import factory_for_gt, preprocess_pifpaf
-from .activity import show_social
+from .activity import show_activities, show_social
 
 LOG = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def factory_from_args(args):
             args.checkpoint = OPENPIFPAF_PATH
         else:
             LOG.info("Checkpoint for OpenPifPaf not specified and default model not found in 'data/models'. "
-                  "Using a ShuffleNet backbone")
+                     "Using a ShuffleNet backbone")
             args.checkpoint = 'shufflenetv2k30'
 
     logger.configure(args, LOG)  # logger first
@@ -140,8 +140,11 @@ def predict(args):
                 LOG.info("Prediction with MonoLoco++")
                 dic_out = net.forward(keypoints, kk)
                 dic_out = net.post_process(dic_out, boxes, keypoints, kk, dic_gt)
-                if args.social_distance:
-                    dic_out = net.social_distance(dic_out, args)
+                if args.activities:
+                    if 'social_distance' in args.activities:
+                        dic_out = net.social_distance(dic_out, args)
+                    if 'raise_hand' in args.activities:
+                        dic_out = net.raising_hand(dic_out, keypoints)
 
             else:
                 LOG.info("Prediction with MonStereo")
@@ -175,8 +178,8 @@ def factory_outputs(args, pifpaf_outs, dic_out, output_path, kk=None):
 
     elif any((xx in args.output_types for xx in ['front', 'bird', 'multi'])):
         LOG.info(output_path)
-        if args.social_distance:
-            show_social(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
+        if args.activities:
+            show_activities(args, pifpaf_outs['image'], output_path, pifpaf_outs['left'], dic_out)
         else:
             printer = Printer(pifpaf_outs['image'], output_path, kk, args)
             figures, axes = printer.factory_axes(dic_out)

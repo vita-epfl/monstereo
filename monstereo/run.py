@@ -36,7 +36,7 @@ def cli():
                                 help='what to output: json keypoints skeleton for Pifpaf'
                                      'json bird front or multi for MonStereo')
     predict_parser.add_argument('--no_save', help='to show images', action='store_true')
-    predict_parser.add_argument('--dpi', help='image resolution',  type=int, default=150)
+    predict_parser.add_argument('--dpi', help='image resolution', type=int, default=150)
     predict_parser.add_argument('--long-edge', default=None, type=int,
                                 help='rescale the long side of the image (aspect ratio maintained)')
     predict_parser.add_argument('--disable-cuda', action='store_true', help='disable CUDA')
@@ -52,7 +52,8 @@ def cli():
     visualizer.cli(parser)
 
     # Monoloco
-    predict_parser.add_argument('--net', help='Choose network: monoloco, monoloco_p, monoloco_pp, monstereo')
+    predict_parser.add_argument('--activities', nargs='+', help='Choose activities to show: social_distance, raise_hand')
+    predict_parser.add_argument('--net', help='Choose network: monoloco, monoloco_p, monoloco_pp, monstereo', default='monoloco_pp')
     predict_parser.add_argument('--model', help='path of MonoLoco model to load', required=True)
     predict_parser.add_argument('--hidden_size', type=int, help='Number of hidden units in the model', default=512)
     predict_parser.add_argument('--path_gt', help='path of json file with gt 3d localization',
@@ -62,9 +63,9 @@ def cli():
     predict_parser.add_argument('--n_dropout', type=int, help='Epistemic uncertainty evaluation', default=0)
     predict_parser.add_argument('--dropout', type=float, help='dropout parameter', default=0.2)
     predict_parser.add_argument('--show_all', help='only predict ground-truth matches or all', action='store_true')
-
+    predict_parser.add_argument('--webcam', help='monstereo streaming', action='store_true')
+    predict_parser.add_argument('--scale', default=0.2, type=float, help='change the scale of the webcam image')
     # Social distancing and social interactions
-    predict_parser.add_argument('--social_distance', help='social', action='store_true')
     predict_parser.add_argument('--threshold_prob', type=float, help='concordance for samples', default=0.25)
     predict_parser.add_argument('--threshold_dist', type=float, help='min distance of people', default=2.5)
     predict_parser.add_argument('--radii', type=tuple, help='o-space radii', default=(0.3, 0.5, 1))
@@ -119,8 +120,16 @@ def cli():
 def main():
     args = cli()
     if args.command == 'predict':
-        from .predict import predict
-        predict(args)
+        if args.webcam:
+            if 'json'in args.output_types:
+                args.output_types = 'multi'
+            if args.z_max == 100:
+                args.z_max = 10
+            from .visuals.webcam import webcam
+            webcam(args)
+        else:
+            from .predict import predict
+            predict(args)
 
     elif args.command == 'prep':
         if 'nuscenes' in args.dataset:
